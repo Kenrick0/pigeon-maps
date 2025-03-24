@@ -72,7 +72,7 @@ export function Marker(props: MarkerProps): JSX.Element {
 		payload: props.payload,
 	});
 
-	const c = this.latLngToPixel(props.anchor || mapApi.mapState.center);
+	const c = mapApi.latLngToPixel(props.anchor || mapApi.mapState.center);
 	const left = c[0] - (props.offset ? props.offset[0] : 0);
 	const top = c[1] - (props.offset ? props.offset[1] : 0);
 
