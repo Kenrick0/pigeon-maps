@@ -4,6 +4,7 @@ import { debounce, parentPosition, parentHasClass } from "../utils";
 import type {
 	Bounds,
 	MapProps,
+	MapApi,
 	MapReactState,
 	MinMaxBounds,
 	MoveEvent,
@@ -17,7 +18,15 @@ import type {
 } from "../types";
 import { osm } from "../providers";
 
-export const MapContext = React.createContext(null);
+const MapContext = React.createContext(null);
+
+export function useMapApi(): MapApi {
+	const map_api = React.useContext(MapContext);
+	if (!map_api) {
+		throw new Error("MapContext not found, are you inside a <Map>?");
+	}
+	return map_api;
+}
 
 const ANIMATION_TIME = 300;
 const DIAGONAL_THROW_TIME = 1500;
@@ -33,7 +42,7 @@ const NOOP = () => true;
 
 // https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
 const lng2tile = (lon: number, zoom: number): number =>
-	((lon + 180) / 360) * Math.pow(2, zoom);
+	((lon + 180) / 360) * 2 ** zoom;
 const lat2tile = (lat: number, zoom: number): number =>
 	((1 -
 		Math.log(
@@ -41,14 +50,14 @@ const lat2tile = (lat: number, zoom: number): number =>
 		) /
 			Math.PI) /
 		2) *
-	Math.pow(2, zoom);
+	2 ** zoom;
 
 function tile2lng(x: number, z: number): number {
-	return (x / Math.pow(2, z)) * 360 - 180;
+	return (x / 2 ** z) * 360 - 180;
 }
 
 function tile2lat(y: number, z: number): number {
-	const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+	const n = Math.PI - (2 * Math.PI * y) / 2 ** z;
 	return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
 }
 
@@ -66,10 +75,10 @@ function easeOutQuad(t: number): number {
 
 // minLat, maxLat, minLng, maxLng
 const absoluteMinMax = [
-	tile2lat(Math.pow(2, 10), 10),
+	tile2lat(2 ** 10, 10),
 	tile2lat(0, 10),
 	tile2lng(0, 10),
-	tile2lng(Math.pow(2, 10), 10),
+	tile2lng(2 ** 10, 10),
 ] as MinMaxBounds;
 
 const hasWindow = typeof window !== "undefined";
@@ -636,18 +645,14 @@ export class Map extends Component<MapProps, MapReactState> {
 			return this._minMaxCache[3];
 		}
 
-		const pixelsAtZoom = Math.pow(2, zoom) * 256;
+		const pixelsAtZoom = 2 ** zoom * 256;
 
 		const minLng = width > pixelsAtZoom ? 0 : tile2lng(width / 512, zoom); // x
 		const minLat =
-			height > pixelsAtZoom
-				? 0
-				: tile2lat(Math.pow(2, zoom) - height / 512, zoom); // y
+			height > pixelsAtZoom ? 0 : tile2lat(2 ** zoom - height / 512, zoom); // y
 
 		const maxLng =
-			width > pixelsAtZoom
-				? 0
-				: tile2lng(Math.pow(2, zoom) - width / 512, zoom); // x
+			width > pixelsAtZoom ? 0 : tile2lng(2 ** zoom - width / 512, zoom); // x
 		const maxLat = height > pixelsAtZoom ? 0 : tile2lat(height / 512, zoom); // y
 
 		const minMax = [minLat, maxLat, minLng, maxLng] as MinMaxBounds;
@@ -754,7 +759,7 @@ export class Map extends Component<MapProps, MapReactState> {
 			this._touchStartPixel = [t1, t2];
 			this._touchStartMidPoint = [(t1[0] + t2[0]) / 2, (t1[1] + t2[1]) / 2];
 			this._touchStartDistance = Math.sqrt(
-				Math.pow(t1[0] - t2[0], 2) + Math.pow(t1[1] - t2[1], 2),
+				(t1[0] - t2[0]) ** 2 + (t1[1] - t2[1]) ** 2,
 			);
 		}
 	};
@@ -805,9 +810,7 @@ export class Map extends Component<MapProps, MapReactState> {
 				midPoint[1] - this._touchStartMidPoint[1],
 			];
 
-			const distance = Math.sqrt(
-				Math.pow(t1[0] - t2[0], 2) + Math.pow(t1[1] - t2[1], 2),
-			);
+			const distance = Math.sqrt((t1[0] - t2[0]) ** 2 + (t1[1] - t2[1]) ** 2);
 
 			const zoomDelta =
 				Math.max(
@@ -817,7 +820,7 @@ export class Map extends Component<MapProps, MapReactState> {
 						zoom + Math.log2(distance / this._touchStartDistance),
 					),
 				) - zoom;
-			const scale = Math.pow(2, zoomDelta);
+			const scale = 2 ** zoomDelta;
 
 			const centerDiffDiff = [
 				(width / 2 - midPoint[0]) * (scale - 1),
@@ -1310,7 +1313,7 @@ export class Map extends Component<MapProps, MapReactState> {
 		const roundedZoom = Math.round(zoom + (zoomDelta || 0));
 		const zoomDiff = zoom + (zoomDelta || 0) - roundedZoom;
 
-		const scale = Math.pow(2, zoomDiff);
+		const scale = 2 ** zoomDiff;
 		const scaleWidth = width / scale;
 		const scaleHeight = height / scale;
 
@@ -1375,14 +1378,14 @@ export class Map extends Component<MapProps, MapReactState> {
 				continue;
 			}
 
-			const pow = 1 / Math.pow(2, zoomDiff);
+			const pow = 1 / 2 ** zoomDiff;
 			const xDiff = -(tileMinX - old.tileMinX * pow) * 256;
 			const yDiff = -(tileMinY - old.tileMinY * pow) * 256;
 
 			const xMin = Math.max(old.tileMinX, 0);
 			const yMin = Math.max(old.tileMinY, 0);
-			const xMax = Math.min(old.tileMaxX, Math.pow(2, old.roundedZoom) - 1);
-			const yMax = Math.min(old.tileMaxY, Math.pow(2, old.roundedZoom) - 1);
+			const xMax = Math.min(old.tileMaxX, 2 ** old.roundedZoom - 1);
+			const yMax = Math.min(old.tileMaxY, 2 ** old.roundedZoom - 1);
 
 			for (let x = xMin; x <= xMax; x++) {
 				for (let y = yMin; y <= yMax; y++) {
@@ -1402,8 +1405,8 @@ export class Map extends Component<MapProps, MapReactState> {
 
 		const xMin = Math.max(tileMinX, 0);
 		const yMin = Math.max(tileMinY, 0);
-		const xMax = Math.min(tileMaxX, Math.pow(2, roundedZoom) - 1);
-		const yMax = Math.min(tileMaxY, Math.pow(2, roundedZoom) - 1);
+		const xMax = Math.min(tileMaxX, 2 ** roundedZoom - 1);
+		const yMax = Math.min(tileMaxY, 2 ** roundedZoom - 1);
 
 		for (let x = xMin; x <= xMax; x++) {
 			for (let y = yMin; y <= yMax; y++) {
@@ -1648,8 +1651,23 @@ export class Map extends Component<MapProps, MapReactState> {
 
 		const hasSize = !!(width && height);
 
+		const mapState = {
+			bounds: this.getBounds(),
+			zoom: this.zoomPlusDelta(),
+			center: this.state.center,
+			width: this.state.width,
+			height: this.state.height,
+		};
+		const map_api: MapApi = {
+			latLngToPixel: this.latLngToPixel,
+			pixelToLatLng: this.pixelToLatLng,
+			setCenterZoom: this.setCenterZoom,
+			mapProps: this.props,
+			mapState: mapState,
+		};
+
 		return (
-			<MapContext.Provider value={this}>
+			<MapContext.Provider value={map_api}>
 				<div style={containerStyle} ref={this.setRef} dir="ltr">
 					{hasSize && this.renderTiles()}
 					{hasSize && this.renderOverlays()}
