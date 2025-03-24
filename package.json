@@ -1,53 +1,47 @@
 {
-  "name": "pigeon-maps",
-  "version": "0.22.0",
-  "description": "ReactJS maps without external dependencies",
-  "author": "Marius Andra",
-  "license": "MIT",
-  "types": "lib/index.d.ts",
-  "main": "lib/index.cjs.js",
-  "module": "lib/index.esm.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/mariusandra/pigeon-maps.git"
-  },
-  "bugs": {
-    "url": "https://github.com/mariusandra/pigeon-maps/issues"
-  },
-  "homepage": "https://github.com/mariusandra/pigeon-maps#readme",
-  "scripts": {
-    "start": "webpack-dev-server --history-api-fallback --hot --host 0.0.0.0 --port 4040",
-    "build": "rimraf lib && bun x tsc && rimraf lib/demo && mv lib/src/* lib/ && rimraf lib/src && bun build ./src/index.tsx --outfile=lib/index.esm.js",
-    "prepare": "bun run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "files": [
-    "lib",
-    "src",
-    "LICENSE.md",
-    "README.md",
-    "providers"
-  ],
-  "dependencies": {},
-  "peerDependencies": {
-    "react": "*"
-  },
-  "devDependencies": {
-    "@types/react": "17.0.38",
-    "husky": "^4",
-    "lint-staged": ">=10.5.1",
-    "prettier": "^2.0.5",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "rimraf": "^3.0.2",
-    "typescript": "^4.2.3"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.{js,css,scss}": "prettier --write"
-  }
+	"name": "pigeon-maps",
+	"version": "0.22.0",
+	"author": "Marius Andra",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mariusandra/pigeon-maps.git"
+	},
+	"main": "lib/index.cjs.js",
+	"module": "lib/index.esm.js",
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/react": "17.0.38",
+		"husky": "^4",
+		"lint-staged": ">=10.5.1",
+		"prettier": "^2.0.5",
+		"react": "^16.13.1",
+		"react-dom": "^16.13.1",
+		"rimraf": "^3.0.2",
+		"typescript": "^4.2.3"
+	},
+	"peerDependencies": {
+		"react": "*"
+	},
+	"bugs": {
+		"url": "https://github.com/mariusandra/pigeon-maps/issues"
+	},
+	"description": "ReactJS maps without external dependencies",
+	"files": ["lib", "src", "LICENSE.md", "README.md", "providers"],
+	"homepage": "https://github.com/mariusandra/pigeon-maps#readme",
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
+	},
+	"license": "MIT",
+	"lint-staged": {
+		"*.{js,css,scss}": "prettier --write"
+	},
+	"scripts": {
+		"start": "webpack-dev-server --history-api-fallback --hot --host 0.0.0.0 --port 4040",
+		"build": "rimraf lib && bun x tsc && rimraf lib/demo && mv lib/src/* lib/ && rimraf lib/src && bun build ./src/index.tsx --outfile=lib/index.esm.js",
+		"prepare": "bun run build",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"types": "lib/index.d.ts"
 }
