@@ -1261,7 +1261,7 @@ export class Map extends Component<MapProps, MapReactState> {
 
       const c = this.latLngToPixel(anchor || position || center)
 
-      return React.cloneElement(child, {
+      const props = {
         left: c[0] - (offset ? offset[0] : 0),
         top: c[1] - (offset ? offset[1] : 0),
         latLngToPixel: this.latLngToPixel,
@@ -1269,7 +1269,8 @@ export class Map extends Component<MapProps, MapReactState> {
         setCenterZoom: this.setCenterZoomForChildren,
         mapProps: this.props,
         mapState,
-      })
+      }
+      return React.cloneElement(child, props)
     })
 
     const childrenStyle: React.CSSProperties = {

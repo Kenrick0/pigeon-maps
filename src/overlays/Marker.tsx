@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { PigeonProps } from '../types'
+import { PigeonProps, Point } from '../types'
 
 interface MarkerProps extends PigeonProps {
   color?: string
@@ -16,10 +16,10 @@ interface MarkerProps extends PigeonProps {
   children?: JSX.Element
 
   // callbacks
-  onClick?: ({ event: HTMLMouseEvent, anchor: Point, payload: any }) => void
-  onContextMenu?: ({ event: HTMLMouseEvent, anchor: Point, payload: any }) => void
-  onMouseOver?: ({ event: HTMLMouseEvent, anchor: Point, payload: any }) => void
-  onMouseOut?: ({ event: HTMLMouseEvent, anchor: Point, payload: any }) => void
+  onClick?: ({ event, anchor, payload }: { event: React.MouseEvent, anchor: Point, payload: any }) => void
+  onContextMenu?: ({ event, anchor, payload }: { event: React.MouseEvent, anchor: Point, payload: any }) => void
+  onMouseOver?: ({ event, anchor, payload }: { event: React.MouseEvent, anchor: Point, payload: any }) => void
+  onMouseOut?: ({ event, anchor, payload }: { event: React.MouseEvent, anchor: Point, payload: any }) => void
 }
 
 export function Marker(props: MarkerProps): JSX.Element {
