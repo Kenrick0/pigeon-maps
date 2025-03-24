@@ -17,6 +17,8 @@ import type {
 } from "../types";
 import { osm } from "../providers";
 
+export const MapContext = React.createContext(null);
+
 const ANIMATION_TIME = 300;
 const DIAGONAL_THROW_TIME = 1500;
 const SCROLL_PIXELS_FOR_ZOOM_LEVEL = 150;
@@ -1647,12 +1649,14 @@ export class Map extends Component<MapProps, MapReactState> {
 		const hasSize = !!(width && height);
 
 		return (
-			<div style={containerStyle} ref={this.setRef} dir="ltr">
-				{hasSize && this.renderTiles()}
-				{hasSize && this.renderOverlays()}
-				{hasSize && this.renderAttribution()}
-				{hasSize && this.renderWarning()}
-			</div>
+			<MapContext.Provider value={this}>
+				<div style={containerStyle} ref={this.setRef} dir="ltr">
+					{hasSize && this.renderTiles()}
+					{hasSize && this.renderOverlays()}
+					{hasSize && this.renderAttribution()}
+					{hasSize && this.renderWarning()}
+				</div>
+			</MapContext.Provider>
 		);
 	}
 }

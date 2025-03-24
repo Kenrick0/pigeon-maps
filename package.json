@@ -11,9 +11,6 @@
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"@types/react": "17.0.38",
-		"husky": "^4",
-		"lint-staged": ">=10.5.1",
-		"prettier": "^2.0.5",
 		"react": "^16.13.1",
 		"react-dom": "^16.13.1",
 		"rimraf": "^3.0.2",
@@ -28,15 +25,7 @@
 	"description": "ReactJS maps without external dependencies",
 	"files": ["lib", "src", "LICENSE.md", "README.md", "providers"],
 	"homepage": "https://github.com/mariusandra/pigeon-maps#readme",
-	"husky": {
-		"hooks": {
-			"pre-commit": "lint-staged"
-		}
-	},
 	"license": "MIT",
-	"lint-staged": {
-		"*.{js,css,scss}": "prettier --write"
-	},
 	"scripts": {
 		"start": "webpack-dev-server --history-api-fallback --hot --host 0.0.0.0 --port 4040",
 		"build": "rimraf lib && bun x tsc && rimraf lib/demo && mv lib/src/* lib/ && rimraf lib/src && bun build ./src/index.tsx --outfile=lib/index.esm.js -e react",
