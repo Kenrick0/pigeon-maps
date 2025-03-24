@@ -1475,33 +1475,33 @@ export class Map extends Component<MapProps, MapReactState> {
 			height,
 		};
 
-		const childrenWithProps = React.Children.map(
-			this.props.children,
-			(child) => {
-				if (!child) {
-					return null;
-				}
+		// const childrenWithProps = React.Children.map(
+		// 	this.props.children,
+		// 	(child) => {
+		// 		if (!child) {
+		// 			return null;
+		// 		}
 
-				if (!React.isValidElement(child)) {
-					return child;
-				}
+		// 		if (!React.isValidElement(child)) {
+		// 			return child;
+		// 		}
 
-				const { anchor, position, offset } = child.props;
+		// 		const { anchor, position, offset } = child.props;
 
-				const c = this.latLngToPixel(anchor || position || center);
+		// 		const c = this.latLngToPixel(anchor || position || center);
 
-				const props_arg = {
-					left: c[0] - (offset ? offset[0] : 0),
-					top: c[1] - (offset ? offset[1] : 0),
-					latLngToPixel: this.latLngToPixel,
-					pixelToLatLng: this.pixelToLatLng,
-					setCenterZoom: this.setCenterZoomForChildren,
-					mapProps: this.props,
-					mapState,
-				};
-				return React.cloneElement(child, { ...props_arg });
-			},
-		);
+		// 		const props_arg = {
+		// 			left: c[0] - (offset ? offset[0] : 0),
+		// 			top: c[1] - (offset ? offset[1] : 0),
+		// 			latLngToPixel: this.latLngToPixel,
+		// 			pixelToLatLng: this.pixelToLatLng,
+		// 			setCenterZoom: this.setCenterZoomForChildren,
+		// 			mapProps: this.props,
+		// 			mapState,
+		// 		};
+		// 		return React.cloneElement(child, { ...props_arg });
+		// 	},
+		// );
 
 		const childrenStyle: React.CSSProperties = {
 			position: "absolute",
@@ -1513,7 +1513,7 @@ export class Map extends Component<MapProps, MapReactState> {
 
 		return (
 			<div className="pigeon-overlays" style={childrenStyle}>
-				{childrenWithProps}
+				{this.props.children}
 			</div>
 		);
 	}
