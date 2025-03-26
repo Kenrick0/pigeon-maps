@@ -1,7 +1,7 @@
 // biome-ignore lint/style/useImportType: <explanation>
 import React, { useState } from "react";
 import type { Point } from "../types";
-import { useMapApi } from "map/Map";
+import { useMapApi } from "../map/Map";
 
 // biome-ignore lint/suspicious/noExplicitAny: <allow user to pass any payload>
 type payloadType = any;
