@@ -73,14 +73,6 @@ function easeOutQuad(t: number): number {
 	return t * (2 - t);
 }
 
-// minLat, maxLat, minLng, maxLng
-const absoluteMinMax = [
-	tile2lat(2 ** 10, 10),
-	tile2lat(0, 10),
-	tile2lng(0, 10),
-	tile2lng(2 ** 10, 10),
-] as MinMaxBounds;
-
 const hasWindow = typeof window !== "undefined";
 
 const performanceNow =
@@ -155,7 +147,6 @@ export class Map extends Component<MapProps, MapReactState> {
 		animateMaxScreens: 5,
 		minZoom: 1,
 		maxZoom: 18,
-		limitBounds: "center",
 		dprs: [],
 		tileComponent: ImgTile,
 	};
@@ -352,7 +343,7 @@ export class Map extends Component<MapProps, MapReactState> {
 			this.props.zoom === prevProps.zoom
 		) {
 			// if the user is controlling either zoom or center but nothing changed
-			// we don't have to update aswell
+			// we don't have to update as well
 			return;
 		}
 
@@ -630,10 +621,6 @@ export class Map extends Component<MapProps, MapReactState> {
 	};
 
 	getBoundsMinMax = (zoom: number): MinMaxBounds => {
-		if (this.props.limitBounds === "center") {
-			return absoluteMinMax;
-		}
-
 		const { width, height } = this.state;
 
 		if (
@@ -1229,6 +1216,14 @@ export class Map extends Component<MapProps, MapReactState> {
 		const tileX = lng2tile(center[1], zoom) + pointDiff[0];
 		const tileY = lat2tile(center[0], zoom) + pointDiff[1];
 
+		// minLat, maxLat, minLng, maxLng
+		const absoluteMinMax = [
+			tile2lat(2 ** 10, 10),
+			tile2lat(0, 10),
+			tile2lng(0, 10),
+			tile2lng(2 ** 10, 10),
+		] as MinMaxBounds;
+
 		return [
 			Math.max(
 				absoluteMinMax[0],
@@ -1465,43 +1460,7 @@ export class Map extends Component<MapProps, MapReactState> {
 	}
 
 	renderOverlays(): JSX.Element {
-		const { width, height, center } = this.state;
-
-		const mapState = {
-			bounds: this.getBounds(),
-			zoom: this.zoomPlusDelta(),
-			center: center,
-			width,
-			height,
-		};
-
-		// const childrenWithProps = React.Children.map(
-		// 	this.props.children,
-		// 	(child) => {
-		// 		if (!child) {
-		// 			return null;
-		// 		}
-
-		// 		if (!React.isValidElement(child)) {
-		// 			return child;
-		// 		}
-
-		// 		const { anchor, position, offset } = child.props;
-
-		// 		const c = this.latLngToPixel(anchor || position || center);
-
-		// 		const props_arg = {
-		// 			left: c[0] - (offset ? offset[0] : 0),
-		// 			top: c[1] - (offset ? offset[1] : 0),
-		// 			latLngToPixel: this.latLngToPixel,
-		// 			pixelToLatLng: this.pixelToLatLng,
-		// 			setCenterZoom: this.setCenterZoomForChildren,
-		// 			mapProps: this.props,
-		// 			mapState,
-		// 		};
-		// 		return React.cloneElement(child, { ...props_arg });
-		// 	},
-		// );
+		const { width, height } = this.state;
 
 		const childrenStyle: React.CSSProperties = {
 			position: "absolute",
@@ -1626,9 +1585,8 @@ export class Map extends Component<MapProps, MapReactState> {
 					{warningText.replace("META", meta)}
 				</div>
 			);
-		} else {
-			return null;
 		}
+		return null;
 	}
 
 	render(): JSX.Element {
