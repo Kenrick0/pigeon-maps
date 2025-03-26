@@ -69,9 +69,6 @@ export interface MapProps {
 	onAnimationStart?: () => void;
 	onAnimationStop?: () => void;
 
-	// will be set to "edge" from v0.12 onward, defaulted to "center" before
-	limitBounds?: "center" | "edge";
-
 	boxClassname?: string;
 	tileComponent?: TileComponent;
 }
