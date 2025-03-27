@@ -28,7 +28,7 @@
 	"license": "MIT",
 	"scripts": {
 		"start": "webpack-dev-server --history-api-fallback --hot --host 0.0.0.0 --port 4040",
-		"build": "rimraf lib && bun x tsc && rimraf lib/demo && mv lib/src/* lib/ && rimraf lib/src && bun build ./src/index.ts --outfile=lib/index.esm.js -e react",
+		"build": "rimraf lib && bun x tsc && bun build ./src/index.ts --outfile=lib/index.esm.js -e react",
 		"prepare": "bun run build",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},

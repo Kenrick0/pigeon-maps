@@ -95,7 +95,7 @@ export function MultiPoint(props: GeometryProps): JSX.Element {
 	return (
 		<>
 			{props.coordinates.map((point, i) => (
-				<PointComponent {...props} coordinates={point} key={i} />
+				<PointComponent key={i} coordinates={point} {...props} />
 			))}
 		</>
 	);
@@ -117,7 +117,7 @@ export function MultiLineString(props: GeometryProps): JSX.Element {
 	return (
 		<>
 			{props.coordinates.map((line, i) => (
-				<LineString {...props} coordinates={line} key={i} />
+				<LineString key={i} coordinates={line} {...props} />
 			))}
 		</>
 	);
@@ -144,7 +144,7 @@ export function MultiPolygon(props: GeometryProps): JSX.Element {
 	return (
 		<>
 			{props.coordinates.map((polygon, i) => (
-				<Polygon {...props} coordinates={polygon} key={i} />
+				<Polygon key={i} coordinates={polygon} {...props} />
 			))}
 		</>
 	);
@@ -166,7 +166,7 @@ export function GeometryCollection(props: GeometryProps): JSX.Element {
 		return (
 			<>
 				{geometries.map((geometry, i) => (
-					<GeometryCollection key={i} {...props} geometry={geometry} />
+					<GeometryCollection key={i} geometry={geometry} {...props} />
 				))}
 			</>
 		);

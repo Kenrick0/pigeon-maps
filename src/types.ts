@@ -42,9 +42,9 @@ export interface MapProps {
 	attribution?: ReactElement | false;
 	attributionPrefix?: ReactElement | false;
 
-	zoomSnap?: boolean;
-	mouseEvents?: boolean;
-	touchEvents?: boolean;
+	enableZoomSnap?: boolean;
+	enableMouseEvents?: boolean;
+	enableTouchEvents?: boolean;
 
 	onClick?: ({
 		event,
@@ -60,11 +60,13 @@ export interface MapProps {
 		zoom,
 		bounds,
 		initial,
+		isAnimating,
 	}: {
 		center: [number, number];
 		bounds: Bounds;
 		zoom: number;
 		initial: boolean;
+		isAnimating: boolean;
 	}) => void;
 	onAnimationStart?: () => void;
 	onAnimationStop?: () => void;
@@ -99,7 +101,6 @@ export interface TileValues {
 	tileCenterX: number;
 	tileCenterY: number;
 	roundedZoom: number;
-	zoomDelta: number;
 	scaleWidth: number;
 	scaleHeight: number;
 	scale: number;
@@ -126,7 +127,6 @@ export interface MapReactState {
 	center: Point;
 	width: number;
 	height: number;
-	zoomDelta: number;
 	pixelDelta?: [number, number];
 	oldTiles: TileValues[];
 	showWarning: boolean;
