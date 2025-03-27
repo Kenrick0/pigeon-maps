@@ -28,7 +28,7 @@ export interface MapProps {
 	children?: React.ReactNode;
 
 	animate?: boolean;
-	animateMaxScreens?: number;
+	animateOnPropChange?: boolean;
 
 	minZoom?: number;
 	maxZoom?: number;
@@ -108,19 +108,10 @@ export interface TileValues {
 
 export type WarningType = "fingers" | "wheel";
 
-export type WAdd = typeof window.addEventListener;
-export type WRem = typeof window.removeEventListener;
-
 export interface MoveEvent {
 	timestamp: number;
 	coords: Point;
 }
-
-type MinLat = number;
-type MaxLat = number;
-type MinLng = number;
-type MaxLng = number;
-export type MinMaxBounds = [MinLat, MaxLat, MinLng, MaxLng];
 
 export interface MapReactState {
 	zoom: number;
@@ -163,11 +154,7 @@ export interface PigeonProps {
 export interface MapApi {
 	latLngToPixel: (latLng: Point, center?: Point, zoom?: number) => Point;
 	pixelToLatLng: (pixel: Point, center?: Point, zoom?: number) => Point;
-	setCenterZoom: (
-		center: Point | null,
-		zoom: number,
-		animationEnded?: boolean,
-	) => void;
+	setCenterZoom: (center: Point | null, zoom: number, animationEnded?: boolean) => void;
 	mapProps: MapProps;
 	mapState: MapState;
 }
