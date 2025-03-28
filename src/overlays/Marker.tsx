@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
 import type { Point } from "../types";
-import { useMapApi } from "../map/Map";
+import { useMapApi } from "../map/PigeonMap";
 
 // biome-ignore lint/suspicious/noExplicitAny: <allow user to pass any payload>
 type payloadType = any;
@@ -61,8 +61,7 @@ export function Marker(props: MarkerProps): JSX.Element {
 				? (props.width * 34) / 29
 				: 34;
 	const [internalHover, setInternalHover] = useState(props.hover || false);
-	const hover =
-		typeof props.hover === "undefined" ? internalHover : props.hover;
+	const hover = typeof props.hover === "undefined" ? internalHover : props.hover;
 	const color = props.color || "#93C0D0";
 
 	// what do you expect to get back with the event
@@ -88,18 +87,10 @@ export function Marker(props: MarkerProps): JSX.Element {
 				cursor: "pointer",
 				...(props.style || {}),
 			}}
-			className={
-				props.className
-					? `${props.className} pigeon-click-block`
-					: "pigeon-click-block"
-			}
-			onClick={
-				props.onClick ? (event) => props.onClick(eventParameters(event)) : null
-			}
+			className={props.className ? `${props.className} pigeon-click-block` : "pigeon-click-block"}
+			onClick={props.onClick ? (event) => props.onClick(eventParameters(event)) : null}
 			onContextMenu={
-				props.onContextMenu
-					? (event) => props.onContextMenu(eventParameters(event))
-					: null
+				props.onContextMenu ? (event) => props.onContextMenu(eventParameters(event)) : null
 			}
 			onMouseOver={(event) => {
 				props.onMouseOver?.(eventParameters(event));
@@ -126,13 +117,7 @@ export function Marker(props: MarkerProps): JSX.Element {
 							stroke="white"
 							strokeWidth="4"
 						/>
-						<circle
-							cx="30.5"
-							cy="30.5"
-							r="8.5"
-							fill="white"
-							opacity={hover ? 0.98 : 0.6}
-						/>
+						<circle cx="30.5" cy="30.5" r="8.5" fill="white" opacity={hover ? 0.98 : 0.6} />
 					</g>
 				</svg>
 			)}

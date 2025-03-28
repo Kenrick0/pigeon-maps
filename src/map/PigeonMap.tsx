@@ -96,14 +96,13 @@ function parentPosition(element: HTMLElement) {
 const wa = window.addEventListener;
 const wr = window.removeEventListener;
 
-const ImgTile: TileComponent = ({ tile, tileLoaded }) => (
+const ImgTile: TileComponent = ({ tile, onTileLoaded }) => (
 	<img
 		src={tile.url}
 		srcSet={tile.srcSet}
 		width={tile.width}
 		height={tile.height}
-		loading={"lazy"}
-		onLoad={tileLoaded}
+		onLoad={onTileLoaded}
 		alt={""}
 		style={{
 			position: "absolute",
@@ -111,7 +110,6 @@ const ImgTile: TileComponent = ({ tile, tileLoaded }) => (
 			top: tile.top,
 			willChange: "transform",
 			transformOrigin: "top left",
-			opacity: 1,
 		}}
 	/>
 );
@@ -135,7 +133,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		tileComponent: ImgTile,
 	};
 
-	_loadTracker?: { [key: string]: boolean };
+	_loadTracker: { [key: string]: boolean } = {};
 
 	_containerRef?: HTMLDivElement;
 	_resizeObserver = null;
@@ -534,12 +532,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		// Update tiles if zoom changed
 		if (zoomChanged) {
 			const tileValues = this.tileValues(this.state);
-			const nextValues = this.tileValues({
-				center: limitedCenter,
-				zoom,
-				width: this.state.width,
-				height: this.state.height,
-			});
 			const oldTiles = this.state.oldTiles;
 
 			this.setState({
@@ -547,17 +539,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 					.filter((o) => o.roundedZoom !== tileValues.roundedZoom)
 					.concat(tileValues),
 			});
-
-			const loadTracker: { [key: string]: boolean } = {};
-
-			for (let x = nextValues.tileMinX; x <= nextValues.tileMaxX; x++) {
-				for (let y = nextValues.tileMinY; y <= nextValues.tileMaxY; y++) {
-					const key = `${x}-${y}-${nextValues.roundedZoom}`;
-					loadTracker[key] = false;
-				}
-			}
-
-			this._loadTracker = loadTracker;
 		}
 
 		// Apply center and zoom if it's different
@@ -575,12 +556,11 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		}
 	};
 
-	tileLoaded = (key: string): void => {
+	onTileLoaded = (key: string): void => {
 		if (this._loadTracker && key in this._loadTracker) {
 			this._loadTracker[key] = true;
 
 			const unloadedCount = Object.values(this._loadTracker).filter((v) => !v).length;
-
 			if (unloadedCount === 0) {
 				this.setState({ oldTiles: [] });
 			}
@@ -1021,6 +1001,32 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		const { dprs, boxClassname } = this.props;
 		const mapUrl = this.props.provider || osm;
 
+		const tiles: Tile[] = [];
+
+		function generateTiles(tileValues: TileValues, pow = 1, xDiff = 0, yDiff = 0) {
+			const tilePixels = 256 * pow; // width and height are the same
+			const xMin = Math.max(tileValues.tileMinX, 0);
+			const yMin = Math.max(tileValues.tileMinY, 0);
+			const xMax = Math.min(tileValues.tileMaxX, 2 ** tileValues.roundedZoom - 1);
+			const yMax = Math.min(tileValues.tileMaxY, 2 ** tileValues.roundedZoom - 1);
+
+			for (let x = xMin; x <= xMax; x++) {
+				for (let y = yMin; y <= yMax; y++) {
+					tiles.push({
+						key: `${x}-${y}-${tileValues.roundedZoom}`,
+						url: mapUrl(x, y, tileValues.roundedZoom),
+						srcSet: srcSet(dprs, mapUrl, x, y, tileValues.roundedZoom),
+						left: xDiff + (x - tileValues.tileMinX) * tilePixels,
+						top: yDiff + (y - tileValues.tileMinY) * tilePixels,
+						width: tilePixels,
+						height: tilePixels,
+						active: true,
+					});
+				}
+			}
+		}
+
+		const newTileValues = this.tileValues(this.state);
 		const {
 			tileMinX,
 			tileMaxX,
@@ -1032,11 +1038,9 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			scaleWidth,
 			scaleHeight,
 			scale,
-		} = this.tileValues(this.state);
+		} = newTileValues;
 
-		const tiles: Tile[] = [];
-
-		console.log(oldTiles);
+		// Generate tiles for the old zoom levels
 		for (const old of oldTiles) {
 			const zoomDiff = old.roundedZoom - roundedZoom;
 			if (Math.abs(zoomDiff) > 4 || zoomDiff === 0) {
@@ -1044,49 +1048,20 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			}
 
 			const pow = 1 / 2 ** zoomDiff;
-			const xDiff = -(tileMinX - old.tileMinX * pow) * 256;
-			const yDiff = -(tileMinY - old.tileMinY * pow) * 256;
-
-			const xMin = Math.max(old.tileMinX, 0);
-			const yMin = Math.max(old.tileMinY, 0);
-			const xMax = Math.min(old.tileMaxX, 2 ** old.roundedZoom - 1);
-			const yMax = Math.min(old.tileMaxY, 2 ** old.roundedZoom - 1);
-
-			for (let x = xMin; x <= xMax; x++) {
-				for (let y = yMin; y <= yMax; y++) {
-					tiles.push({
-						key: `${x}-${y}-${old.roundedZoom}`,
-						url: mapUrl(x, y, old.roundedZoom),
-						srcSet: srcSet(dprs, mapUrl, x, y, old.roundedZoom),
-						left: xDiff + (x - old.tileMinX) * 256 * pow,
-						top: yDiff + (y - old.tileMinY) * 256 * pow,
-						width: 256 * pow,
-						height: 256 * pow,
-						active: false,
-					});
-				}
-			}
+			const xDiff = (old.tileMinX * pow - tileMinX) * 256;
+			const yDiff = (old.tileMinY * pow - tileMinY) * 256;
+			generateTiles(old, pow, xDiff, yDiff);
 		}
 
-		const xMin = Math.max(tileMinX, 0);
-		const yMin = Math.max(tileMinY, 0);
-		const xMax = Math.min(tileMaxX, 2 ** roundedZoom - 1);
-		const yMax = Math.min(tileMaxY, 2 ** roundedZoom - 1);
+		// Generate tiles for the current zoom level (last so that they are on top)
+		generateTiles(newTileValues);
 
-		for (let x = xMin; x <= xMax; x++) {
-			for (let y = yMin; y <= yMax; y++) {
-				tiles.push({
-					key: `${x}-${y}-${roundedZoom}`,
-					url: mapUrl(x, y, roundedZoom),
-					srcSet: srcSet(dprs, mapUrl, x, y, roundedZoom),
-					left: (x - tileMinX) * 256,
-					top: (y - tileMinY) * 256,
-					width: 256,
-					height: 256,
-					active: true,
-				});
-			}
+		// Update loadTracker with the new tiles
+		const loadTracker: { [key: string]: boolean } = {};
+		for (const tile of tiles) {
+			loadTracker[tile.key] = this._loadTracker[tile.key] ?? false; // set to false if not present
 		}
+		this._loadTracker = loadTracker;
 
 		const boxStyle: React.CSSProperties = {
 			width: scaleWidth,
@@ -1100,8 +1075,8 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			transformOrigin: "top left",
 		};
 
-		const left = -((tileCenterX - tileMinX) * 256 - scaleWidth / 2);
-		const top = -((tileCenterY - tileMinY) * 256 - scaleHeight / 2);
+		const left = scaleWidth / 2 + (tileMinX - tileCenterX) * 256;
+		const top = scaleHeight / 2 + (tileMinY - tileCenterY) * 256;
 
 		const tilesStyle: React.CSSProperties = {
 			position: "absolute",
@@ -1111,14 +1086,13 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			transform: `translate(${left}px, ${top}px)`,
 		};
 
-		console.log("Rendering n tiles", tiles.length);
 		const Tile = this.props.tileComponent;
 
 		return (
 			<div style={boxStyle} className={boxClassname}>
 				<div className="pigeon-tiles" style={tilesStyle}>
 					{tiles.map((tile) => (
-						<Tile key={tile.key} tile={tile} tileLoaded={() => this.tileLoaded(tile.key)} />
+						<Tile key={tile.key} tile={tile} onTileLoaded={() => this.onTileLoaded(tile.key)} />
 					))}
 				</div>
 			</div>

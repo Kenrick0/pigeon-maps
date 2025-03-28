@@ -1,5 +1,5 @@
 export * from "./types";
-export { PigeonMap, useMapApi } from "./map/Map";
+export { PigeonMap, useMapApi } from "./map/PigeonMap";
 export { Marker } from "./overlays/Marker";
 export { Overlay } from "./overlays/Overlay";
 export { GeoJson, GeoJsonLoader, GeoJsonFeature } from "./overlays/GeoJson";

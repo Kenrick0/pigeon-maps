@@ -79,7 +79,7 @@ export type TileComponent = (props: TileComponentProps) => ReactElement;
 
 export interface TileComponentProps {
 	tile: Tile;
-	tileLoaded: () => void;
+	onTileLoaded: () => void;
 }
 
 export interface Tile {
