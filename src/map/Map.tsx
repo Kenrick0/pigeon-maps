@@ -92,19 +92,6 @@ function parentPosition(element: HTMLElement) {
 	return { x: rect.left, y: rect.top };
 }
 
-function srcSet(
-	dprs: number[],
-	url: (x: number, y: number, z: number, dpr?: number) => string,
-	x: number,
-	y: number,
-	z: number,
-): string {
-	if (!dprs || dprs.length === 0) {
-		return "";
-	}
-	return dprs.map((dpr) => url(x, y, z, dpr) + (dpr === 1 ? "" : ` ${dpr}x`)).join(", ");
-}
-
 // Short names to reduce minified bundle size
 const wa = window.addEventListener;
 const wr = window.removeEventListener;
@@ -136,8 +123,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		metaWheelZoomWarning: "Use META + wheel to zoom!",
 		twoFingerDrag: false,
 		twoFingerDragWarning: "Use two fingers to move the map",
-		// TODO: use the value in the comment
-		enableZoomSnap: true, //  navigator.maxTouchPoints === 0, // snap by default for non-touch devices
+		enableZoomSnap: navigator.maxTouchPoints === 0, // snap by default for non-touch devices
 		enableMouseEvents: true,
 		enableTouchEvents: true,
 		warningZIndex: 100,
@@ -169,8 +155,8 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 	_warningClearTimeout: number | null = null;
 
 	_isAnimating = false;
-	_animationStart: number | null = null;
-	_animationEnd: number | null = null;
+	_animationStartTime: number | null = null;
+	_animationDuration: number | null = null;
 	_centerStart: Point | null = null;
 	_zoomStart: number | null = null;
 	_centerTarget: Point | null = null;
@@ -433,25 +419,12 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 		if (this.props.animate && animate) {
 			// If overall animation is enabled and animation requested for this specific move
-			// Start or update an animation
-			if (this._isAnimating) {
-				cancelAnimationFrame(this._animFrame);
-				const { centerStep, zoomStep } = this.animationStep(performanceNow());
-				this._centerStart = centerStep;
-				this._zoomStart = zoomStep;
-			} else {
-				console.log("wasn't animating", this.state.center);
-				this._isAnimating = true;
-				this._centerStart = this.state.center;
-				this._zoomStart = this.state.zoom;
-				this.props.onAnimationStart?.();
-			}
-
+			this._isAnimating = true;
 			this._centerTarget = centerTarget;
 			this._zoomTarget = zoomTarget;
 			this._zoomAroundPixel = zoomAroundPixel;
-			this._animationStart = performanceNow();
-			this._animationEnd = this._animationStart + animationDuration;
+			this._animationStartTime = null; // flag to start animation on next frame
+			this._animationDuration = animationDuration;
 			this._animFrame = requestAnimationFrame(this.animate);
 		} else {
 			// No animation, just set the center and zoom immediately
@@ -462,8 +435,8 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 	animationStep = (timestamp: number): { centerStep: Point; zoomStep: number } => {
 		if (
-			!this._animationEnd ||
-			!this._animationStart ||
+			!this._animationDuration ||
+			!this._animationStartTime ||
 			!this._zoomTarget ||
 			!this._zoomStart ||
 			!this._centerStart ||
@@ -474,12 +447,11 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 				zoomStep: this.state.zoom,
 			};
 		}
-		const length = this._animationEnd - this._animationStart;
-		const progress = Math.max(timestamp - this._animationStart, 0);
+		const progress = Math.max(timestamp - this._animationStartTime, 0);
 		const easeOutQuad = (t: number): number => {
 			return t * (2 - t);
 		};
-		const percentage = easeOutQuad(progress / length);
+		const percentage = easeOutQuad(progress / this._animationDuration);
 
 		const zoomStep = this._zoomStart + (this._zoomTarget - this._zoomStart) * percentage;
 
@@ -502,11 +474,23 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 	};
 
 	animate = (timestamp: number): void => {
-		if (!this._animationEnd || timestamp >= this._animationEnd) {
+		if (this._animationStartTime === null) {
+			// First frame of animation, set the start values
+			this._animationStartTime = timestamp;
+			this._centerStart = this.state.center;
+			this._zoomStart = this.state.zoom;
+			this.props.onAnimationStart?.();
+			this._animFrame = requestAnimationFrame(this.animate);
+		} else if (
+			!this._animationDuration ||
+			timestamp >= this._animationDuration + this._animationStartTime
+		) {
+			// End of animation
 			this._isAnimating = false;
 			this.setCenterZoom(this._centerTarget, this._zoomTarget);
 			this.props.onAnimationStop?.();
 		} else {
+			// Next frame of animation
 			const { centerStep, zoomStep } = this.animationStep(timestamp);
 			this.setCenterZoom(centerStep, zoomStep);
 			this._animFrame = requestAnimationFrame(this.animate);
@@ -579,7 +563,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		// Apply center and zoom if it's different
 		if (zoomChanged || centerChanged) {
 			this.setState({ center: limitedCenter, zoom: zoom });
-			console.log(center);
 
 			// Call onBoundsChanged callback if it's defined
 			this.props.onBoundsChanged?.({
@@ -978,8 +961,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		this._containerRef = dom;
 	};
 
-	// data to display the tiles
-
 	tileValues({
 		center,
 		zoom,
@@ -991,6 +972,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		width: number;
 		height: number;
 	}): TileValues {
+		// data to display the tiles
 		const roundedZoom = Math.round(zoom);
 
 		const scale = 2 ** (zoom - roundedZoom);
@@ -1003,17 +985,11 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		const halfWidth = scaleWidth / 2 / 256.0;
 		const halfHeight = scaleHeight / 2 / 256.0;
 
-		const tileMinX = Math.floor(tileCenterX - halfWidth);
-		const tileMaxX = Math.floor(tileCenterX + halfWidth);
-
-		const tileMinY = Math.floor(tileCenterY - halfHeight);
-		const tileMaxY = Math.floor(tileCenterY + halfHeight);
-
 		return {
-			tileMinX,
-			tileMaxX,
-			tileMinY,
-			tileMaxY,
+			tileMinX: Math.floor(tileCenterX - halfWidth),
+			tileMaxX: Math.floor(tileCenterX + halfWidth),
+			tileMinY: Math.floor(tileCenterY - halfHeight),
+			tileMaxY: Math.floor(tileCenterY + halfHeight),
 			tileCenterX,
 			tileCenterY,
 			roundedZoom,
@@ -1023,9 +999,24 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		};
 	}
 
-	// display the tiles
+	// -----------------------------------------------------------------------------------------------
+	//                                        Render methods
+	// -----------------------------------------------------------------------------------------------
 
 	renderTiles(): JSX.Element {
+		function srcSet(
+			dprs: number[],
+			url: (x: number, y: number, z: number, dpr?: number) => string,
+			x: number,
+			y: number,
+			z: number,
+		): string {
+			if (!dprs || dprs.length === 0) {
+				return "";
+			}
+			return dprs.map((dpr) => url(x, y, z, dpr) + (dpr === 1 ? "" : ` ${dpr}x`)).join(", ");
+		}
+
 		const { oldTiles, width, height } = this.state;
 		const { dprs, boxClassname } = this.props;
 		const mapUrl = this.props.provider || osm;
@@ -1045,6 +1036,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 		const tiles: Tile[] = [];
 
+		console.log(oldTiles);
 		for (const old of oldTiles) {
 			const zoomDiff = old.roundedZoom - roundedZoom;
 			if (Math.abs(zoomDiff) > 4 || zoomDiff === 0) {
@@ -1119,6 +1111,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			transform: `translate(${left}px, ${top}px)`,
 		};
 
+		console.log("Rendering n tiles", tiles.length);
 		const Tile = this.props.tileComponent;
 
 		return (
@@ -1241,9 +1234,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			};
 
 			const meta =
-				typeof window !== "undefined" &&
-				window.navigator &&
-				window.navigator.platform.toUpperCase().indexOf("MAC") >= 0
+				hasWindow && window.navigator && window.navigator.platform.toUpperCase().indexOf("MAC") >= 0
 					? "⌘"
 					: "ctrl";
 
