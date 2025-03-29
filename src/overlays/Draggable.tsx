@@ -1,19 +1,24 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import type { PigeonProps, Point } from "../types";
+import type { Point } from "../types";
+import { useMapApi } from "../map/PigeonMap";
 
 function isDescendentOf(element, ancestor) {
-	while (element) {
-		if (element === ancestor) {
+	let currentElement = element;
+	while (currentElement) {
+		if (currentElement === ancestor) {
 			return true;
 		}
-		element = element.parentElement;
+		currentElement = currentElement.parentElement;
 	}
 
 	return false;
 }
 
-interface DraggableProps extends PigeonProps {
+interface DraggableProps {
+	anchor: Point;
+	offset?: Point;
+
 	className?: string;
 	style?: React.CSSProperties;
 
@@ -45,46 +50,51 @@ const defaultState: DraggableState = {
 };
 
 export function Draggable(props: DraggableProps): JSX.Element {
+	const [_state, _setState] = useState(defaultState);
+	const mapApi = useMapApi();
+
 	const dragRef = useRef<HTMLDivElement>();
 	const propsRef = useRef<DraggableProps>(props);
 	const stateRef = useRef({ ...defaultState });
-	const [_state, _setState] = useState(defaultState);
+	const mapRef = useRef(mapApi);
 
 	propsRef.current = props;
+	mapRef.current = mapApi;
 
-	const setState = (stateUpdate: Partial<DraggableState>): void => {
-		const newState = { ...stateRef.current, ...stateUpdate };
-		stateRef.current = newState;
-		_setState(newState);
-	};
-
-	const { enableMouseEvents: mouseEvents, enableTouchEvents: touchEvents } =
-		props.mapProps;
+	const { enableMouseEvents: mouseEvents, enableTouchEvents: touchEvents } = mapApi.mapProps;
 
 	useEffect(() => {
+		const setState = (stateUpdate: Partial<DraggableState>): void => {
+			const newState = { ...stateRef.current, ...stateUpdate };
+			stateRef.current = newState;
+			_setState(newState);
+		};
+
 		const handleDragStart = (event: MouseEvent | TouchEvent) => {
 			if (isDescendentOf(event.target, dragRef.current)) {
 				event.preventDefault();
+
+				const c = mapRef.current.latLngToPixel(propsRef.current.anchor);
+				const { offset } = propsRef.current;
+				const left = c[0] - offset[0];
+				const top = c[1] - offset[1];
 
 				setState({
 					isDragging: true,
 					startX: ("touches" in event ? event.touches[0] : event).clientX,
 					startY: ("touches" in event ? event.touches[0] : event).clientY,
-					startLeft: propsRef.current.left,
-					startTop: propsRef.current.top,
+					startLeft: left,
+					startTop: top,
 					deltaX: 0,
 					deltaY: 0,
 				});
 
-				if (propsRef.current.onDragStart) {
-					const { left, top, offset, pixelToLatLng } = propsRef.current;
-					propsRef.current.onDragMove(
-						pixelToLatLng([
-							left + (offset ? offset[0] : 0),
-							top + (offset ? offset[1] : 0),
-						]),
-					);
-				}
+				propsRef.current.onDragStart?.(
+					mapRef.current.pixelToLatLng([
+						left + (offset ? offset[0] : 0),
+						top + (offset ? offset[1] : 0),
+					]),
+				);
 			}
 		};
 
@@ -104,11 +114,11 @@ export function Draggable(props: DraggableProps): JSX.Element {
 			setState({ deltaX, deltaY });
 
 			if (propsRef.current.onDragMove) {
-				const { offset, pixelToLatLng } = propsRef.current;
+				const { offset } = propsRef.current;
 				const { startLeft, startTop } = stateRef.current;
 
 				propsRef.current.onDragMove(
-					pixelToLatLng([
+					mapRef.current.pixelToLatLng([
 						startLeft + deltaX + (offset ? offset[0] : 0),
 						startTop + deltaY + (offset ? offset[1] : 0),
 					]),
@@ -123,11 +133,11 @@ export function Draggable(props: DraggableProps): JSX.Element {
 
 			event.preventDefault();
 
-			const { offset, pixelToLatLng } = propsRef.current;
+			const { offset } = propsRef.current;
 			const { deltaX, deltaY, startLeft, startTop } = stateRef.current;
 
 			propsRef.current.onDragEnd?.(
-				pixelToLatLng([
+				mapRef.current.pixelToLatLng([
 					startLeft + deltaX + (offset ? offset[0] : 0),
 					startTop + deltaY + (offset ? offset[1] : 0),
 				]),
@@ -144,10 +154,8 @@ export function Draggable(props: DraggableProps): JSX.Element {
 			});
 		};
 
-		const wa = (e: string, t: EventListener, o?: AddEventListenerOptions) =>
-			window.addEventListener(e, t, o);
-		const wr = (e: string, t: EventListener) =>
-			window.removeEventListener(e, t);
+		const wa = window.addEventListener;
+		const wr = window.removeEventListener;
 
 		if (mouseEvents) {
 			wa("mousedown", handleDragStart);
@@ -176,7 +184,11 @@ export function Draggable(props: DraggableProps): JSX.Element {
 		};
 	}, [mouseEvents, touchEvents]);
 
-	const { left, top, className, style } = props;
+	const c = mapApi.latLngToPixel(props.anchor || mapApi.mapState.center);
+	const left = c[0] - (props.offset ? props.offset[0] : 0);
+	const top = c[1] - (props.offset ? props.offset[1] : 0);
+
+	const { className, style } = props;
 	const { deltaX, deltaY, startLeft, startTop, isDragging } = _state;
 
 	return (

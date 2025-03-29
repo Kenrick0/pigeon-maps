@@ -363,14 +363,15 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 	setCenterZoomTarget = (
 		center: Point,
-		zoomRequest: number,
-		zoomAroundPixel: Point | null,
-		animate,
-		animationDuration,
+		zoom: number,
+		zoomAroundPixel: Point | null = null,
+		animate = true,
+		animationDuration = ANIMATION_TIME,
 	): void => {
-		// Clip zoom to min/max values
+		// Clip zoom to min/max values (limit minimum allowed to prevent zooming outside the map)
 		const { minZoom, maxZoom } = this.props;
-		const zoomTarget = Math.max(minZoom, Math.min(zoomRequest, maxZoom));
+		const minZoomAllowed = Math.log2(this.state.height / 256); // ensure we can't see beyond the map up/down
+		const zoomTarget = Math.max(minZoomAllowed, minZoom, Math.min(zoom, maxZoom));
 
 		let centerTarget = center;
 		if (zoomAroundPixel) {
@@ -476,25 +477,22 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 		const centerU = lng2tile(center[1], zoom);
 		const centerV = lat2tile(center[0], zoom);
-		const widthU = width / 256;
 		const heightV = height / 256;
 		const maxUV = 2 ** zoom;
 
-		const clippedCenterU =
-			widthU > maxUV ? maxUV / 2 : Math.max(widthU / 2, Math.min(maxUV - widthU / 2, centerU));
-		const clippedCenterV =
-			heightV > maxUV ? maxUV / 2 : Math.max(heightV / 2, Math.min(maxUV - heightV / 2, centerV));
+		const clippedCenterU = wrapNumber(centerU, maxUV);
+		const clippedCenterV = Math.max(heightV / 2, Math.min(maxUV - heightV / 2, centerV));
 
 		return [tile2lat(clippedCenterV, zoom), tile2lng(clippedCenterU, zoom)];
 	};
 
 	// main logic when changing coordinates
-	setCenterZoom = (center: Point, zoom: number): void => {
-		const limitedCenter = this.limitCenter(center, zoom);
+	setCenterZoom = (centerRequest: Point, zoomTarget: number): void => {
+		const centerTarget = this.limitCenter(centerRequest, zoomTarget);
 
-		const zoomChanged = Math.round(this.state.zoom) !== Math.round(zoom);
+		const zoomChanged = Math.round(this.state.zoom) !== Math.round(zoomTarget);
 		const centerChanged =
-			limitedCenter[0] !== this.state.center[0] || limitedCenter[1] !== this.state.center[1];
+			centerTarget[0] !== this.state.center[0] || centerTarget[1] !== this.state.center[1];
 
 		// Update tiles if zoom changed
 		if (zoomChanged) {
@@ -510,13 +508,13 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 		// Apply center and zoom if it's different
 		if (zoomChanged || centerChanged) {
-			this.setState({ center: limitedCenter, zoom: zoom });
+			this.setState({ center: centerTarget, zoom: zoomTarget });
 
 			// Call onBoundsChanged callback if it's defined
 			this.props.onBoundsChanged?.({
-				center: limitedCenter,
-				zoom,
-				bounds: this.getBounds(limitedCenter, zoom),
+				center: centerTarget,
+				zoom: zoomTarget,
+				bounds: this.getBounds(centerTarget, zoomTarget),
 				initial: false,
 				isAnimating: this._isAnimating,
 			});
@@ -961,17 +959,18 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 		function generateTiles(tileValues: TileValues, pow = 1, xDiff = 0, yDiff = 0) {
 			const tilePixels = 256 * pow; // width and height are the same
-			const xMin = Math.max(tileValues.tileMinX, 0);
+			const xMin = tileValues.tileMinX;
 			const yMin = Math.max(tileValues.tileMinY, 0);
-			const xMax = Math.min(tileValues.tileMaxX, 2 ** tileValues.roundedZoom - 1);
+			const xMax = tileValues.tileMaxX;
 			const yMax = Math.min(tileValues.tileMaxY, 2 ** tileValues.roundedZoom - 1);
 
 			for (let x = xMin; x <= xMax; x++) {
 				for (let y = yMin; y <= yMax; y++) {
+					const xMod = wrapNumber(x, 2 ** tileValues.roundedZoom);
 					tiles.push({
 						key: `${x}-${y}-${tileValues.roundedZoom}`,
-						url: mapUrl(x, y, tileValues.roundedZoom),
-						srcSet: srcSet(dprs, mapUrl, x, y, tileValues.roundedZoom),
+						url: mapUrl(xMod, y, tileValues.roundedZoom),
+						srcSet: srcSet(dprs, mapUrl, xMod, y, tileValues.roundedZoom),
 						left: xDiff + (x - tileValues.tileMinX) * tilePixels,
 						top: yDiff + (y - tileValues.tileMinY) * tilePixels,
 						width: tilePixels,
@@ -1198,7 +1197,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		const map_api: MapApi = {
 			latLngToPixel: this.latLngToPixel,
 			pixelToLatLng: this.pixelToLatLng,
-			setCenterZoom: this.setCenterZoom,
+			setCenterZoomTarget: this.setCenterZoomTarget,
 			mapProps: this.props,
 			mapState: {
 				bounds: this.getBounds(),

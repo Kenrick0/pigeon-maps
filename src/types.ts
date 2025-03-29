@@ -131,6 +131,7 @@ export interface MapState {
 	height: number;
 }
 
+// TODO: delete me
 export interface PigeonProps {
 	anchor?: Point;
 	offset?: Point;
@@ -142,10 +143,11 @@ export interface PigeonProps {
 	// pigeon functions
 	latLngToPixel?: (latLng: Point, center?: Point, zoom?: number) => Point;
 	pixelToLatLng?: (pixel: Point, center?: Point, zoom?: number) => Point;
-	setCenterZoom?: (
-		center: Point | null,
+	setCenterZoomTarget?: (
+		center: Point,
 		zoom: number,
-		zoomAround?: Point | null,
+		zoomAroundPixel?: Point,
+		animate?: boolean,
 		animationDuration?: number,
 	) => void;
 }
@@ -153,7 +155,13 @@ export interface PigeonProps {
 export interface MapApi {
 	latLngToPixel: (latLng: Point, center?: Point, zoom?: number) => Point;
 	pixelToLatLng: (pixel: Point, center?: Point, zoom?: number) => Point;
-	setCenterZoom: (center: Point | null, zoom: number, animationEnded?: boolean) => void;
+	setCenterZoomTarget: (
+		center: Point,
+		zoom: number,
+		zoomAroundPixel?: Point,
+		animate?: boolean,
+		animationDuration?: number,
+	) => void;
 	mapProps: MapProps;
 	mapState: MapState;
 }

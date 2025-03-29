@@ -1,10 +1,4 @@
-import React, {
-	type CSSProperties,
-	type SVGProps,
-	useMemo,
-	useEffect,
-	useState,
-} from "react";
+import React, { type CSSProperties, type SVGProps, useMemo, useEffect, useState } from "react";
 import type { PigeonProps, Point } from "../types";
 
 interface GeoJsonProps extends PigeonProps {
@@ -78,17 +72,9 @@ export function PointComponent(props: GeometryProps): JSX.Element {
 	const [cx, cy] = latLngToPixel([x, y]);
 	if (props.svgAttributes?.path) {
 		const path = `M${cx},${cy}c${props.svgAttributes.path.split(/[c|C|L|l|v|V|h|H](.*)/s)[1]}`;
-		return (
-			<path d={path} {...(props.svgAttributes as SVGProps<SVGCircleElement>)} />
-		);
+		return <path d={path} {...(props.svgAttributes as SVGProps<SVGCircleElement>)} />;
 	}
-	return (
-		<circle
-			cx={cx}
-			cy={cy}
-			{...(props.svgAttributes as SVGProps<SVGCircleElement>)}
-		/>
-	);
+	return <circle cx={cx} cy={cy} {...(props.svgAttributes as SVGProps<SVGCircleElement>)} />;
 }
 
 export function MultiPoint(props: GeometryProps): JSX.Element {
@@ -191,8 +177,7 @@ export function GeometryCollection(props: GeometryProps): JSX.Element {
 export function GeoJsonFeature(props: GeoJsonProps): JSX.Element {
 	const [internalHover, setInternalHover] = useState(props.hover || false);
 	const hover = props.hover !== undefined ? props.hover : internalHover;
-	const callbackSvgAttributes =
-		props.styleCallback && props.styleCallback(props.feature, hover);
+	const callbackSvgAttributes = props.styleCallback?.(props.feature, hover);
 	const svgAttributes = callbackSvgAttributes
 		? props.svgAttributes
 			? { ...props.svgAttributes, ...callbackSvgAttributes }
@@ -208,31 +193,25 @@ export function GeoJsonFeature(props: GeoJsonProps): JSX.Element {
 	});
 
 	return (
+		// biome-ignore lint/a11y/useKeyWithMouseEvents: <explanation>
+		// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
 		<g
 			clipRule="evenodd"
 			style={{ pointerEvents: "auto" }}
-			onClick={
-				props.onClick ? (event) => props.onClick(eventParameters(event)) : null
-			}
+			onClick={props.onClick ? (event) => props.onClick(eventParameters(event)) : null}
 			onContextMenu={
-				props.onContextMenu
-					? (event) => props.onContextMenu(eventParameters(event))
-					: null
+				props.onContextMenu ? (event) => props.onContextMenu(eventParameters(event)) : null
 			}
 			onMouseOver={(event) => {
-				props.onMouseOver && props.onMouseOver(eventParameters(event));
+				props.onMouseOver?.(eventParameters(event));
 				setInternalHover(true);
 			}}
 			onMouseOut={(event) => {
-				props.onMouseOut && props.onMouseOut(eventParameters(event));
+				props.onMouseOut?.(eventParameters(event));
 				setInternalHover(false);
 			}}
 		>
-			<GeometryCollection
-				{...props}
-				{...props.feature}
-				svgAttributes={svgAttributes}
-			/>
+			<GeometryCollection {...props} {...props.feature} svgAttributes={svgAttributes} />
 		</g>
 	);
 }
@@ -250,12 +229,9 @@ export function GeoJson(props: GeoJsonProps): JSX.Element {
 				cursor: "pointer",
 				...(props.style || {}),
 			}}
-			className={
-				props.className
-					? `${props.className} pigeon-click-block`
-					: "pigeon-click-block"
-			}
+			className={props.className ? `${props.className} pigeon-click-block` : "pigeon-click-block"}
 		>
+			{/* biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
 			<svg
 				width={width}
 				height={height}
@@ -263,10 +239,9 @@ export function GeoJson(props: GeoJsonProps): JSX.Element {
 				fill="none"
 				xmlns="http://www.w3.org/2000/svg"
 			>
-				{props.data &&
-					props.data.features.map((feature, i) => (
-						<GeoJsonFeature key={i} {...props} feature={feature} />
-					))}
+				{props.data?.features.map((feature, i) => (
+					<GeoJsonFeature key={i} {...props} feature={feature} />
+				))}
 
 				{React.Children.map(props.children, (child) => {
 					if (!child) {
