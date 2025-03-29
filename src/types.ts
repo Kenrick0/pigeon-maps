@@ -118,7 +118,6 @@ export interface MapReactState {
 	center: Point;
 	width: number;
 	height: number;
-	pixelDelta?: [number, number];
 	oldTiles: TileValues[];
 	showWarning: boolean;
 	warningType?: WarningType;

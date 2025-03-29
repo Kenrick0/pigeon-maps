@@ -16,19 +16,17 @@ import { osm } from "../providers";
 
 const MapContext = React.createContext(null);
 
-export function useMapApi(): MapApi {
+export const useMapApi = (): MapApi => {
 	const map_api = React.useContext(MapContext);
 	if (!map_api) {
-		throw new Error("MapContext not found, are you inside a <Map>?");
+		throw new Error("MapContext not found, are you inside a <PigeonMap>?");
 	}
 	return map_api;
-}
+};
 
 const ANIMATION_TIME = 300;
 const SCROLL_PIXELS_FOR_ZOOM_LEVEL = 150;
 const MIN_VELOCITY_FOR_THROW = 250;
-const TOUCH_THROW_MULTIPLIER = 0.5; // Allow touch to throw further
-const MOUSE_THROW_MULTIPLIER = 0.2;
 const CLICK_TOLERANCE = 2;
 const DOUBLE_CLICK_DELAY = 300;
 const PINCH_RELEASE_THROW_DELAY = 300;
@@ -41,19 +39,24 @@ const lat2tile = (lat: number, zoom: number): number =>
 		2) *
 	2 ** zoom;
 
-function tile2lng(x: number, z: number): number {
+const tile2lng = (x: number, z: number): number => {
 	return (x / 2 ** z) * 360 - 180;
-}
+};
 
-function tile2lat(y: number, z: number): number {
+const tile2lat = (y: number, z: number): number => {
 	const n = Math.PI - (2 * Math.PI * y) / 2 ** z;
 	return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-}
+};
 
-function getMousePixel(dom: HTMLElement, event: Pick<MouseEvent, "clientX" | "clientY">): Point {
+const getMousePixel = (dom: HTMLElement, event: Pick<MouseEvent, "clientX" | "clientY">): Point => {
 	const parent = parentPosition(dom);
 	return [event.clientX - parent.x, event.clientY - parent.y];
-}
+};
+
+const wrapNumber = (num: number, max: number): number => {
+	// Wrap a number to the range [0, max)
+	return ((num % max) + max) % max;
+};
 
 const hasWindow = typeof window !== "undefined";
 
@@ -75,7 +78,7 @@ const requestAnimationFrame = (callback: (timestamp: number) => void): number | 
 const cancelAnimationFrame = (animFrame: number | null) =>
 	hasWindow && animFrame ? (window.cancelAnimationFrame || window.clearTimeout)(animFrame) : false;
 
-function parentHasClass(element: HTMLElement, className: string) {
+const parentHasClass = (element: HTMLElement, className: string) => {
 	let currentElement = element;
 	while (currentElement) {
 		if (currentElement.classList?.contains(className)) {
@@ -85,12 +88,12 @@ function parentHasClass(element: HTMLElement, className: string) {
 	}
 
 	return false;
-}
+};
 
-function parentPosition(element: HTMLElement) {
+const parentPosition = (element: HTMLElement) => {
 	const rect = element.getBoundingClientRect();
 	return { x: rect.left, y: rect.top };
-}
+};
 
 // Short names to reduce minified bundle size
 const wa = window.addEventListener;
@@ -125,7 +128,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		enableMouseEvents: true,
 		enableTouchEvents: true,
 		warningZIndex: 100,
-		animateMaxScreens: 5,
 		minZoom: 1,
 		maxZoom: 18,
 		dprs: [],
@@ -141,7 +143,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 	_dragStart: Point | null = null;
 	_mouseDown = false;
 	_moveEvents: MoveEvent[] = [];
-	_lastClickTime: number | null = null;
 	_lastTapTime: number | null = null;
 	_lastWheelTime: number | null = null;
 	_touchStartPixel: Point[] | null = null;
@@ -181,19 +182,18 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		this.props.enableTouchEvents && this.bindTouchEvents();
 
 		if (!this.props.width || !this.props.height) {
-			// A height:100% container div often results in height=0 being returned on mount.
-			// So ask again once everything is painted.
-			if (!this.updateWidthHeight()) {
-				requestAnimationFrame(this.updateWidthHeight);
-			}
-			this.bindResizeEvent();
-		}
+			// If width or height is not controlled use the container size
+			const updateWidthHeight = () => {
+				const rect = this._containerRef.getBoundingClientRect();
+				if (rect.width > 0 && rect.height > 0) {
+					this.setState({
+						width: rect.width,
+						height: rect.height,
+					});
+				}
+			};
 
-		if (typeof window.ResizeObserver !== "undefined") {
-			this._resizeObserver = new window.ResizeObserver(() => {
-				this.updateWidthHeight();
-			});
-
+			this._resizeObserver = new window.ResizeObserver(updateWidthHeight);
 			this._resizeObserver.observe(this._containerRef);
 		}
 
@@ -201,7 +201,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		this.props.onBoundsChanged?.({
 			center: this.state.center,
 			zoom: this.state.zoom,
-			bounds: this.getBounds(this.state.center, this.state.zoom),
+			bounds: this.getBounds(),
 			initial: true,
 			isAnimating: this._isAnimating,
 		});
@@ -211,36 +211,17 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		this.props.enableMouseEvents && this.unbindMouseEvents();
 		this.props.enableTouchEvents && this.unbindTouchEvents();
 
-		if (!this.props.width || !this.props.height) {
-			this.unbindResizeEvent();
-		}
-
 		if (this._resizeObserver) {
 			this._resizeObserver.disconnect();
 		}
 	}
-
-	updateWidthHeight = (): boolean => {
-		if (this._containerRef) {
-			const rect = this._containerRef.getBoundingClientRect();
-
-			if (rect && rect.width > 0 && rect.height > 0) {
-				this.setState({
-					width: rect.width,
-					height: rect.height,
-				});
-				return true;
-			}
-		}
-		return false;
-	};
 
 	bindMouseEvents = (): void => {
 		wa("mousedown", this.handleMouseDown);
 		wa("mouseup", this.handleMouseUp);
 		wa("mousemove", this.handleMouseMove);
 
-		this._containerRef?.addEventListener("wheel", this.handleWheel, {
+		this._containerRef.addEventListener("wheel", this.handleWheel, {
 			passive: false,
 		});
 	};
@@ -249,7 +230,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		wr("mousedown", this.handleMouseDown);
 		wr("mouseup", this.handleMouseUp);
 		wr("mousemove", this.handleMouseMove);
-		this._containerRef?.removeEventListener("wheel", this.handleWheel);
+		this._containerRef.removeEventListener("wheel", this.handleWheel);
 	};
 
 	bindTouchEvents = (): void => {
@@ -262,14 +243,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		wr("touchstart", this.handleTouchStart);
 		wr("touchmove", this.handleTouchMove);
 		wr("touchend", this.handleTouchEnd);
-	};
-
-	bindResizeEvent = (): void => {
-		wa("resize", this.updateWidthHeight);
-	};
-
-	unbindResizeEvent = (): void => {
-		wr("resize", this.updateWidthHeight);
 	};
 
 	componentDidUpdate(prevProps: MapProps): void {
@@ -611,11 +584,12 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 					}
 				}
 			}
-			// added second finger and first one was in the area
 		} else if (event.touches.length === 2 && this._touchStartPixel) {
+			// Added second finger and first one was in the area
 			event.preventDefault();
 
-			this.stopTrackingMoveEvents();
+			// if dragging with 2 fingers, don't throw the map
+			this._moveEvents = [];
 
 			const t1 = getMousePixel(this._containerRef, event.touches[0]);
 			const t2 = getMousePixel(this._containerRef, event.touches[1]);
@@ -764,13 +738,12 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			this.stopAnimating();
 			event.preventDefault();
 
-			if (this._lastClickTime && performanceNow() - this._lastClickTime < DOUBLE_CLICK_DELAY) {
+			if (event.detail === 2) {
+				// Double click (https://developer.mozilla.org/en-US/docs/Web/API/UIEvent/detail)
 				if (!parentHasClass(event.target as HTMLElement, "pigeon-click-block")) {
 					this.setPanZoomTarget(null, 1, pixel);
 				}
 			} else {
-				this._lastClickTime = performanceNow();
-
 				this._mouseDown = true;
 				this._dragStart = pixel;
 				this.trackMoveEvents(pixel);
@@ -782,18 +755,18 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		if (!this._containerRef) {
 			return;
 		}
-		const newPixel = getMousePixel(this._containerRef, event);
+		const pixel = getMousePixel(this._containerRef, event);
 
 		if (this._mouseDown && this._dragStart) {
 			this.trackMoveEvents(this._lastMousePosition);
 			const panPixels: Point = [
-				newPixel[0] - this._lastMousePosition[0],
-				newPixel[1] - this._lastMousePosition[1],
+				pixel[0] - this._lastMousePosition[0],
+				pixel[1] - this._lastMousePosition[1],
 			];
 			this.setPanZoomTarget(panPixels, null, null, false);
 		}
 
-		this._lastMousePosition = newPixel;
+		this._lastMousePosition = pixel;
 	};
 
 	handleMouseUp = (event: MouseEvent): void => {
@@ -815,8 +788,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			if (
 				this.props.onClick &&
 				(!event.target || !parentHasClass(event.target as HTMLElement, "pigeon-click-block")) &&
-				(!move_distance_pixels ||
-					Math.abs(move_distance_pixels[0]) + Math.abs(move_distance_pixels[1]) <= CLICK_TOLERANCE)
+				Math.abs(move_distance_pixels[0]) + Math.abs(move_distance_pixels[1]) <= CLICK_TOLERANCE
 			) {
 				const latLng = this.pixelToLatLng(pixel);
 				this.props.onClick({ event, latLng, pixel });
@@ -827,10 +799,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 	};
 
 	// https://www.bennadel.com/blog/1856-using-jquery-s-animate-step-callback-function-to-create-custom-animations.htm
-	stopTrackingMoveEvents = (): void => {
-		this._moveEvents = [];
-	};
-
 	trackMoveEvents = (coords: Point): void => {
 		const timestamp = performanceNow();
 
@@ -849,7 +817,8 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		const { animate } = this.props;
 
 		const timestamp = performanceNow();
-		const lastEvent = this._moveEvents.shift();
+		const lastEvent = this._moveEvents[0];
+		this._moveEvents = [];
 
 		if (lastEvent && animate) {
 			const deltaMs = Math.max(timestamp - lastEvent.timestamp, 1);
@@ -861,22 +830,12 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 			const velocityMag = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
 			if (velocityMag > MIN_VELOCITY_FOR_THROW) {
-				const gain = throwByTouch ? TOUCH_THROW_MULTIPLIER : MOUSE_THROW_MULTIPLIER;
+				// Allow touch to throw further for better UX on mobile devices
+				const gain = throwByTouch ? 0.5 : 0.2;
 				const throw_time = 800 + velocityMag / 10;
 				this.setPanZoomTarget([gain * delta[0], gain * delta[1]], null, null, true, throw_time);
 			}
 		}
-
-		this.stopTrackingMoveEvents();
-	};
-
-	getBounds = (center = this.state.center, zoom = this.state.zoom): Bounds => {
-		const { width, height } = this.state;
-
-		return {
-			ne: this.pixelToLatLng([width - 1, 0], center, zoom),
-			sw: this.pixelToLatLng([0, height - 1], center, zoom),
-		};
 	};
 
 	handleWheel = (event: WheelEvent): void => {
@@ -935,10 +894,13 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		}
 	};
 
-	// ref
+	getBounds = (center = this.state.center, zoom = this.state.zoom): Bounds => {
+		const { width, height } = this.state;
 
-	setRef = (dom: HTMLDivElement) => {
-		this._containerRef = dom;
+		return {
+			ne: this.pixelToLatLng([width - 1, 0], center, zoom),
+			sw: this.pixelToLatLng([0, height - 1], center, zoom),
+		};
 	};
 
 	tileValues({
@@ -1255,7 +1217,13 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 		return (
 			<MapContext.Provider value={map_api}>
-				<div style={containerStyle} ref={this.setRef} dir="ltr">
+				<div
+					style={containerStyle}
+					ref={(dom) => {
+						this._containerRef = dom;
+					}}
+					dir="ltr"
+				>
 					{hasSize && this.renderTiles()}
 					{hasSize && this.renderOverlays()}
 					{hasSize && this.renderAttribution()}
