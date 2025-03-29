@@ -1,53 +1,65 @@
-import React from 'react'
-import { PigeonProps } from '../types'
+import type React from "react";
+import type { PigeonProps } from "../types";
+import { useMapApi } from "../map/PigeonMap";
 
-interface ZoomProps extends PigeonProps {
-  style?: React.CSSProperties
-  buttonStyle?: React.CSSProperties
+interface ZoomProps {
+	style?: React.CSSProperties;
+	buttonStyle?: React.CSSProperties;
 }
 
 const commonStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: 10,
-  left: 10,
-}
+	position: "absolute",
+	top: 10,
+	left: 10,
+};
 
 const commonButtonStyle: React.CSSProperties = {
-  width: 28,
-  height: 28,
-  borderRadius: 2,
-  boxShadow: '0 1px 4px -1px rgba(0,0,0,.3)',
-  background: 'white',
-  lineHeight: '26px',
-  fontSize: '20px',
-  fontWeight: 700,
-  color: '#666',
-  marginBottom: 1,
-  cursor: 'pointer',
-  border: 'none',
-  display: 'block',
-  outline: 'none',
-}
+	width: 28,
+	height: 28,
+	borderRadius: 2,
+	boxShadow: "0 1px 4px -1px rgba(0,0,0,.3)",
+	background: "white",
+	lineHeight: "26px",
+	fontSize: "20px",
+	fontWeight: 700,
+	color: "#666",
+	marginBottom: 1,
+	cursor: "pointer",
+	border: "none",
+	display: "block",
+	outline: "none",
+};
 
-export function ZoomControl({ style, buttonStyle, setCenterZoom, mapState, mapProps }: ZoomProps): JSX.Element {
-  return (
-    <div className="pigeon-zoom-buttons pigeon-drag-block" style={style ? { ...commonStyle, ...style } : commonStyle}>
-      <button
-        className="pigeon-zoom-in"
-        type="button"
-        style={buttonStyle ? { ...commonButtonStyle, ...buttonStyle } : commonButtonStyle}
-        onClick={() => setCenterZoom(mapState.center, Math.min(mapState.zoom + 1, mapProps.maxZoom))}
-      >
-        +
-      </button>
-      <button
-        className="pigeon-zoom-out"
-        type="button"
-        style={buttonStyle ? { ...commonButtonStyle, ...buttonStyle } : commonButtonStyle}
-        onClick={() => setCenterZoom(mapState.center, Math.max(mapState.zoom - 1, mapProps.minZoom))}
-      >
-        –
-      </button>
-    </div>
-  )
+export function ZoomControl({ style, buttonStyle }: ZoomProps): JSX.Element {
+	const mapApi = useMapApi();
+	const mapProps = mapApi.mapProps;
+	const mapState = mapApi.mapState;
+
+	return (
+		<div
+			className="pigeon-zoom-buttons pigeon-drag-block"
+			style={style ? { ...commonStyle, ...style } : commonStyle}
+		>
+			<button
+				className="pigeon-zoom-in"
+				type="button"
+				style={buttonStyle ? { ...commonButtonStyle, ...buttonStyle } : commonButtonStyle}
+				onClick={() =>
+					mapApi.setCenterZoom(mapState.center, Math.min(mapState.zoom + 1, mapProps.maxZoom))
+				}
+			>
+				+
+			</button>
+			<button
+				className="pigeon-zoom-out"
+				type="button"
+				style={buttonStyle ? { ...commonButtonStyle, ...buttonStyle } : commonButtonStyle}
+				onClick={() =>
+					mapApi.setCenterZoom(mapState.center, Math.max(mapState.zoom - 1, mapProps.minZoom))
+				}
+			>
+				–
+			</button>
+		</div>
+	);
 }

@@ -11,10 +11,10 @@ export interface Bounds {
 }
 
 export interface MapProps {
-	center?: Point;
+	goToCenter?: Point;
 	defaultCenter?: Point;
 
-	zoom?: number;
+	goToZoom?: number;
 	defaultZoom?: number;
 
 	width?: number;

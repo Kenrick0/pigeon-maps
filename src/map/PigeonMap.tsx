@@ -118,8 +118,9 @@ const ImgTile: TileComponent = ({ tile, onTileLoaded }) => (
 );
 
 export class PigeonMap extends Component<MapProps, MapReactState> {
-	static defaultProps = {
+	static defaultProps: MapProps = {
 		animate: true,
+		animateOnPropChange: true,
 		metaWheelZoom: false,
 		metaWheelZoomWarning: "Use META + wheel to zoom!",
 		twoFingerDrag: false,
@@ -167,8 +168,8 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		super(props);
 
 		this.state = {
-			zoom: props.defaultZoom ?? props.zoom ?? 14,
-			center: props.defaultCenter ?? props.center ?? [0, 0],
+			zoom: props.defaultZoom ?? props.goToZoom ?? 14,
+			center: props.defaultCenter ?? props.goToCenter ?? [0, 0],
 			width: props.width ?? props.defaultWidth ?? -1,
 			height: props.height ?? props.defaultHeight ?? -1,
 			oldTiles: [],
@@ -262,34 +263,27 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			this.setState({ height: this.props.height });
 		}
 
-		if (!this.props.center && !this.props.zoom) {
-			// if the user isn't controlling neither zoom nor center we don't have to update.
-			return;
-		}
 		if (
-			(!this.props.center ||
-				(this.props.center[0] === prevProps?.center?.[0] &&
-					this.props.center[1] === prevProps.center[1])) &&
-			this.props.zoom === prevProps.zoom
+			(this.props.goToCenter && this.props.goToCenter !== prevProps.goToCenter) ||
+			(this.props.goToZoom && this.props.goToZoom !== prevProps.goToZoom)
 		) {
-			// if the user is controlling either zoom or center but nothing changed
-			// we don't have to update as well
-			return;
-		}
+			// User has updated center or zoom, animate to it
+			const nextCenter = this.props.goToCenter ?? this.state.center;
+			const nextZoom = this.props.goToZoom ?? this.state.zoom;
 
-		const currentCenter = this._isAnimating ? this._centerTarget : this.state.center;
-		const currentZoom = this._isAnimating ? this._zoomTarget : this.state.zoom;
-
-		if (currentCenter && currentZoom) {
-			const nextCenter = this.props.center ?? currentCenter;
-			const nextZoom = this.props.zoom ?? currentZoom;
-
+			// No need to move the map if the center and zoom are the same
 			if (
-				Math.abs(nextZoom - currentZoom) > 0.001 ||
-				Math.abs(nextCenter[0] - currentCenter[0]) > 0.0001 ||
-				Math.abs(nextCenter[1] - currentCenter[1]) > 0.0001
+				Math.abs(nextZoom - this.state.zoom) > 0.001 ||
+				Math.abs(nextCenter[0] - this.state.center[0]) > 0.001 ||
+				Math.abs(nextCenter[1] - this.state.center[1]) > 0.001
 			) {
-				this.setCenterZoomTarget(nextCenter, nextZoom, null, this.props.animateOnPropChange);
+				this.setCenterZoomTarget(
+					nextCenter,
+					nextZoom,
+					null,
+					this.props.animateOnPropChange,
+					ANIMATION_TIME,
+				);
 			}
 		}
 	}
@@ -370,9 +364,9 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 	setCenterZoomTarget = (
 		center: Point,
 		zoomRequest: number,
-		zoomAroundPixel: Point | null = null,
-		animate = true,
-		animationDuration = ANIMATION_TIME,
+		zoomAroundPixel: Point | null,
+		animate,
+		animationDuration,
 	): void => {
 		// Clip zoom to min/max values
 		const { minZoom, maxZoom } = this.props;
