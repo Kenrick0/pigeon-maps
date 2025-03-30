@@ -296,17 +296,11 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		const tileX = lng2tile(center[1], zoom) + pointDiff[0];
 		const tileY = lat2tile(center[0], zoom) + pointDiff[1];
 
-		// minLat, maxLat, minLng, maxLng
-		const absoluteMinMax = [
-			tile2lat(2 ** 10, 10),
-			tile2lat(0, 10),
-			tile2lng(0, 10),
-			tile2lng(2 ** 10, 10),
-		];
-
+		// The values are clipped to the range of the Web Mercator projection
+		// Refer to https://en.wikipedia.org/wiki/Web_Mercator_projection#Formulas
 		return [
-			Math.max(absoluteMinMax[0], Math.min(absoluteMinMax[1], tile2lat(tileY, zoom))),
-			Math.max(absoluteMinMax[2], Math.min(absoluteMinMax[3], tile2lng(tileX, zoom))),
+			Math.max(-85.051129, Math.min(85.051128, tile2lat(tileY, zoom))),
+			Math.max(-180, Math.min(180, tile2lng(tileX, zoom))),
 		] as Point;
 	};
 
