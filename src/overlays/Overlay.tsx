@@ -2,7 +2,7 @@ import type React from "react";
 import type { Point } from "../types";
 import { useMapApi } from "../map/PigeonMap";
 
-interface OverlayProps {
+export interface OverlayProps {
 	anchor: Point; // lat/lng coordinates of the marker
 	offsetPx?: Point; // offset of marker in pixels from the anchor point
 	offsetPercent?: Point; // offset of marker in percent from the anchor point
@@ -19,7 +19,7 @@ interface OverlayProps {
  * @param {React.CSSProperties} [style={}] - Additional CSS styles to apply to the overlay.
  * @param {string} [className] - Additional CSS class names to apply to the overlay.
  * @param {React.ReactNode} children - The content to render inside the overlay.
- * @param {object} [propsRest] - Additional props to spread onto the root `div` element.
+ * @param {object} [divAttributes] - Additional props to spread onto the root `div` element.
  *
  * @returns {JSX.Element} The rendered overlay component.
  *
@@ -43,7 +43,7 @@ export function Overlay({
 	style = {},
 	className,
 	children,
-	...propsRest
+	...divAttributes
 }: OverlayProps & React.HTMLAttributes<HTMLDivElement>) {
 	const mapApi = useMapApi();
 	const c = mapApi.latLngToPixel(anchor);
@@ -52,13 +52,13 @@ export function Overlay({
 
 	return (
 		<div
+			{...divAttributes}
+			className={className ? `${className} pigeon-click-block` : "pigeon-click-block"}
 			style={{
 				position: "absolute",
 				transform: `translate(${left}px, ${top}px) translate(${offsetPercent[0]}%, ${offsetPercent[1]}%)`,
 				...style,
 			}}
-			className={className ? `${className} pigeon-click-block` : "pigeon-click-block"}
-			{...propsRest}
 		>
 			{children}
 		</div>

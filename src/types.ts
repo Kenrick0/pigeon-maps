@@ -131,27 +131,6 @@ export interface MapState {
 	height: number;
 }
 
-// TODO: delete me
-export interface PigeonProps {
-	anchor?: Point;
-	offset?: Point;
-	left?: number;
-	top?: number;
-	mapState?: MapState;
-	mapProps?: MapProps;
-
-	// pigeon functions
-	latLngToPixel?: (latLng: Point, center?: Point, zoom?: number) => Point;
-	pixelToLatLng?: (pixel: Point, center?: Point, zoom?: number) => Point;
-	setCenterZoomTarget?: (
-		center: Point,
-		zoom: number,
-		zoomAroundPixel?: Point,
-		animate?: boolean,
-		animationDuration?: number,
-	) => void;
-}
-
 export interface MapApi {
 	latLngToPixel: (latLng: Point, center?: Point, zoom?: number) => Point;
 	pixelToLatLng: (pixel: Point, center?: Point, zoom?: number) => Point;

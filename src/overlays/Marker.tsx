@@ -1,12 +1,13 @@
 import type React from "react";
 import { useState } from "react";
 import type { Point } from "../types";
-import { Overlay } from "./Overlay";
+import { Overlay, type OverlayProps } from "./Overlay";
 
 interface MarkerProps {
 	anchor: Point; // lat/lng coordinates of the marker
 	height?: number; // height of the marker icon in pixels
 	offsetPx?: Point; // offset of marker in pixels from the anchor point
+	offsetPercent?: Point; // offset of marker in percent from the anchor point
 
 	color?: string;
 	style?: React.CSSProperties;
@@ -43,23 +44,25 @@ interface MarkerProps {
  *           .........
  *             .....
  *               .
+ *
  */
 export function Marker({
 	height = 34,
 	offsetPx = [0, 0],
+	offsetPercent = [-50, -85], // Align the tip of the default marker with the anchor point
 	color = "#93C0D0",
 	style = {},
 	children,
-	...propsRest
-}: MarkerProps & React.HTMLAttributes<HTMLDivElement>): JSX.Element {
+	...overlayDivAttributes
+}: MarkerProps & OverlayProps & React.HTMLAttributes<HTMLDivElement>): JSX.Element {
 	const [hover, setHover] = useState(false);
 
 	return (
 		<Overlay
 			// Pass most props to Overlay
-			{...propsRest}
+			{...overlayDivAttributes}
 			// Extend some props to add marker features
-			offsetPercent={[-50, -85]} // Align the tip of the marker with the anchor point
+			offsetPercent={offsetPercent}
 			offsetPx={offsetPx}
 			style={{
 				filter: hover ? "drop-shadow(0 0 4px rgba(0, 0, 0, .3))" : "",
@@ -69,11 +72,11 @@ export function Marker({
 			}}
 			onMouseOver={(event) => {
 				setHover(true);
-				propsRest.onMouseOver?.(event); // Call user provided onMouseOver if it exists
+				overlayDivAttributes.onMouseOver?.(event); // Call user provided onMouseOver if it exists
 			}}
 			onMouseOut={(event) => {
 				setHover(false);
-				propsRest.onMouseOut?.(event); // Call user provided onMouseOut if it exists
+				overlayDivAttributes.onMouseOut?.(event); // Call user provided onMouseOut if it exists
 			}}
 		>
 			{children || (

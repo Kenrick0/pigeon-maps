@@ -1,62 +1,101 @@
-import React, { type CSSProperties, type SVGProps, useMemo, useEffect, useState } from "react";
-import type { PigeonProps, Point } from "../types";
+import type React from "react";
+import { type CSSProperties, type SVGProps, useState } from "react";
+import { useMapApi } from "../map/PigeonMap";
 
-interface GeoJsonProps extends PigeonProps {
+// ----------------------------------- GeoJSON types ------------------------------------
+// GeoJSON types are defined in https://datatracker.ietf.org/doc/html/rfc7946
+
+interface GeoJsonPoint {
+	type: "Point";
+	coordinates: [number, number];
+}
+
+interface GeoJsonMultiPoint {
+	type: "MultiPoint";
+	coordinates: Array<[number, number]>;
+}
+
+interface GeoJsonLineString {
+	type: "LineString";
+	coordinates: Array<[number, number]>;
+}
+
+interface GeoJsonMultiLineString {
+	type: "MultiLineString";
+	coordinates: Array<Array<[number, number]>>;
+}
+
+interface GeoJsonPolygon {
+	type: "Polygon";
+	coordinates: Array<Array<[number, number]>>;
+}
+
+interface GeoJsonMultiPolygon {
+	type: "MultiPolygon";
+	coordinates: Array<Array<Array<[number, number]>>>;
+}
+
+interface GeoJsonGeometryCollection {
+	type: "GeometryCollection";
+	geometries: Array<GeoJsonGeometry>;
+}
+
+interface GeoJsonFeature {
+	type: "Feature";
+	geometry: GeoJsonGeometry;
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	properties: Record<string, any>;
+}
+
+interface GeoJsonFeatureCollection {
+	type: "FeatureCollection";
+	features: Array<GeoJsonFeature>;
+}
+
+type GeoJsonGeometry =
+	| GeoJsonPoint
+	| GeoJsonMultiPoint
+	| GeoJsonLineString
+	| GeoJsonMultiLineString
+	| GeoJsonPolygon
+	| GeoJsonMultiPolygon
+	| GeoJsonGeometryCollection;
+
+// --------------------------------- End GeoJSON types ----------------------------------
+
+interface GeoJsonProps {
+	data: GeoJsonGeometry | GeoJsonFeature | GeoJsonFeatureCollection;
 	className?: string;
-	data?: any;
-	svgAttributes?: any;
-	styleCallback?: any;
-	hover?: any;
-	feature?: any;
+	svgAttributes?: SVGProps<SVGElement>;
 	style?: CSSProperties;
-	children?: React.ReactNode;
+	styleCallback?: (feature: GeoJsonFeature, hover: boolean) => SVGProps<SVGElement>;
 
 	// callbacks
-	onClick?: ({
-		event,
-		anchor,
-		payload,
-	}: { event: React.MouseEvent; anchor: Point; payload: any }) => void;
+	onClick?: ({ event, feature }: { event: React.MouseEvent; feature: GeoJsonFeature }) => void;
 	onContextMenu?: ({
 		event,
-		anchor,
-		payload,
-	}: { event: React.MouseEvent; anchor: Point; payload: any }) => void;
-	onMouseOver?: ({
-		event,
-		anchor,
-		payload,
-	}: { event: React.MouseEvent; anchor: Point; payload: any }) => void;
-	onMouseOut?: ({
-		event,
-		anchor,
-		payload,
-	}: { event: React.MouseEvent; anchor: Point; payload: any }) => void;
+		feature,
+	}: { event: React.MouseEvent; feature: GeoJsonFeature }) => void;
+	onMouseOver?: ({ event, feature }: { event: React.MouseEvent; feature: GeoJsonFeature }) => void;
+	onMouseOut?: ({ event, feature }: { event: React.MouseEvent; feature: GeoJsonFeature }) => void;
 }
 
-interface GeoJsonLoaderProps extends GeoJsonProps {
-	link?: string;
-}
-
-interface GeoJsonGeometry {
-	type: string;
-	coordinates?:
-		| [number, number]
-		| Array<[number, number]>
-		| Array<Array<[number, number]>>
-		| Array<Array<Array<[number, number]>>>;
-	geometries?: Array<GeoJsonGeometry>;
-}
-
-interface GeometryProps {
-	coordinates?:
-		| [number, number]
-		| Array<[number, number]>
-		| Array<Array<[number, number]>>
-		| Array<Array<Array<[number, number]>>>;
-	latLngToPixel?: (latLng: Point, center?: Point, zoom?: number) => Point;
+interface GeoJsonExtraProps {
 	svgAttributes?: SVGProps<SVGElement>;
-	geometry?: GeoJsonGeometry;
+}
+
+interface GeoJsonFeatureExtraProps {
+	svgAttributes?: SVGProps<SVGElement>;
+	styleCallback?: (feature: GeoJsonFeature, hover: boolean) => SVGProps<SVGElement>;
+
+	// callbacks
+	onClick?: ({ event, feature }: { event: React.MouseEvent; feature: GeoJsonFeature }) => void;
+	onContextMenu?: ({
+		event,
+		feature,
+	}: { event: React.MouseEvent; feature: GeoJsonFeature }) => void;
+	onMouseOver?: ({ event, feature }: { event: React.MouseEvent; feature: GeoJsonFeature }) => void;
+	onMouseOut?: ({ event, feature }: { event: React.MouseEvent; feature: GeoJsonFeature }) => void;
 }
 
 const defaultSvgAttributes = {
@@ -66,118 +105,130 @@ const defaultSvgAttributes = {
 	r: "30",
 };
 
-export function PointComponent(props: GeometryProps): JSX.Element {
-	const { latLngToPixel } = props;
-	const [y, x] = props.coordinates as [number, number];
-	const [cx, cy] = latLngToPixel([x, y]);
-	if (props.svgAttributes?.path) {
-		const path = `M${cx},${cy}c${props.svgAttributes.path.split(/[c|C|L|l|v|V|h|H](.*)/s)[1]}`;
-		return <path d={path} {...(props.svgAttributes as SVGProps<SVGCircleElement>)} />;
-	}
-	return <circle cx={cx} cy={cy} {...(props.svgAttributes as SVGProps<SVGCircleElement>)} />;
-}
+const PointComponent = ({
+	coordinates,
+	svgAttributes,
+}: GeoJsonPoint & GeoJsonExtraProps): JSX.Element => {
+	const { latLngToPixel } = useMapApi();
+	const [lon, lat] = coordinates; // Note: GeoJSON uses [lon, lat] order
+	const [cx, cy] = latLngToPixel([lat, lon]);
+	return <circle cx={cx} cy={cy} {...(svgAttributes as SVGProps<SVGCircleElement>)} />;
+};
 
-export function MultiPoint(props: GeometryProps): JSX.Element {
+const MultiPoint = (props: GeoJsonMultiPoint & GeoJsonExtraProps): JSX.Element => {
 	return (
 		<>
 			{props.coordinates.map((point, i) => (
-				<PointComponent key={i} coordinates={point} {...props} />
+				<PointComponent
+					// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+					key={i}
+					type="Point"
+					coordinates={point}
+					svgAttributes={props.svgAttributes}
+				/>
 			))}
 		</>
 	);
-}
+};
 
-export function LineString(props: GeometryProps): JSX.Element {
-	const { latLngToPixel } = props;
-	const p =
-		"M" +
-		(props.coordinates as Array<[number, number]>).reduce((a, [y, x]) => {
-			const [v, w] = latLngToPixel([x, y]);
-			return a + " " + v + " " + w;
-		}, "");
+const LineString = (props: GeoJsonLineString & GeoJsonExtraProps): JSX.Element => {
+	const { latLngToPixel } = useMapApi();
+	const pointString = props.coordinates.reduce((a, [lon, lat]) => {
+		const [v, w] = latLngToPixel([lat, lon]);
+		return `${a} ${v.toFixed(1)} ${w.toFixed(1)}`;
+	}, "");
+	return <path d={`M ${pointString}`} {...(props.svgAttributes as SVGProps<SVGPathElement>)} />;
+};
 
-	return <path d={p} {...(props.svgAttributes as SVGProps<SVGPathElement>)} />;
-}
-
-export function MultiLineString(props: GeometryProps): JSX.Element {
+const MultiLineString = (props: GeoJsonMultiLineString & GeoJsonExtraProps): JSX.Element => {
 	return (
 		<>
 			{props.coordinates.map((line, i) => (
-				<LineString key={i} coordinates={line} {...props} />
+				<LineString
+					// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+					key={i}
+					type="LineString"
+					coordinates={line}
+					svgAttributes={props.svgAttributes}
+				/>
 			))}
 		</>
 	);
-}
+};
 
-export function Polygon(props: GeometryProps): JSX.Element {
-	const { latLngToPixel } = props;
+const Polygon = (props: GeoJsonPolygon & GeoJsonExtraProps): JSX.Element => {
+	const { latLngToPixel } = useMapApi();
 	// GeoJson polygons is a collection of linear rings
-	const p = (props.coordinates as Array<Array<[number, number]>>).reduce(
-		(a, part) =>
-			a +
-			" M" +
-			part.reduce((a, [y, x]) => {
-				const [v, w] = latLngToPixel([x, y]);
-				return a + " " + v + " " + w;
-			}, "") +
-			"Z",
-		"",
-	);
+	const p = (props.coordinates as Array<Array<[number, number]>>).reduce((a, part) => {
+		const pointString = part.reduce((a, [y, x]) => {
+			const [v, w] = latLngToPixel([x, y]);
+			return `${a} ${v.toFixed(1)} ${w.toFixed(1)}`;
+		}, "");
+		return `${a} M${pointString}Z`;
+	}, "");
 	return <path d={p} {...(props.svgAttributes as SVGProps<SVGPathElement>)} />;
-}
+};
 
-export function MultiPolygon(props: GeometryProps): JSX.Element {
+const MultiPolygon = (props: GeoJsonMultiPolygon & GeoJsonExtraProps): JSX.Element => {
 	return (
 		<>
 			{props.coordinates.map((polygon, i) => (
-				<Polygon key={i} coordinates={polygon} {...props} />
+				// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+				<Polygon key={i} type="Polygon" coordinates={polygon} svgAttributes={props.svgAttributes} />
 			))}
 		</>
 	);
-}
+};
 
-export function GeometryCollection(props: GeometryProps): JSX.Element {
-	const renderer = {
+const GeometryCollection = (props: GeoJsonGeometryCollection & GeoJsonExtraProps): JSX.Element => {
+	return (
+		<>
+			{props.geometries.map((geometry, i) => {
+				return (
+					<RenderGeoJsonGeometry
+						// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+						key={i}
+						geometry={geometry}
+						svgAttributes={props.svgAttributes}
+					/>
+				);
+			})}
+		</>
+	);
+};
+
+// RenderGeoJsonGeometry is a helper function to render a GeoJsonGeometry based on its type
+const RenderGeoJsonGeometry = ({
+	geometry,
+	svgAttributes,
+}: {
+	geometry: GeoJsonGeometry;
+	svgAttributes: SVGProps<SVGElement>;
+}): JSX.Element => {
+	const renderer: Record<string, React.ComponentType<GeoJsonGeometry & GeoJsonExtraProps>> = {
 		Point: PointComponent,
 		MultiPoint,
 		LineString,
 		MultiLineString,
 		Polygon,
 		MultiPolygon,
+		GeometryCollection,
 	};
 
-	const { type, coordinates, geometries } = props.geometry;
-
-	if (type === "GeometryCollection") {
-		return (
-			<>
-				{geometries.map((geometry, i) => (
-					<GeometryCollection key={i} geometry={geometry} {...props} />
-				))}
-			</>
-		);
+	const SpecificGeometryComponent = renderer[geometry.type];
+	if (SpecificGeometryComponent === undefined) {
+		console.warn(`The GeoJson Geometry Type ${geometry.type} is not known`);
+		return <></>;
 	}
 
-	const Component = renderer[type];
+	return <SpecificGeometryComponent {...geometry} svgAttributes={svgAttributes} />;
+};
 
-	if (Component === undefined) {
-		console.warn(`The GeoJson Type ${type} is not known`);
-		return null;
-	}
-	return (
-		<Component
-			latLngToPixel={props.latLngToPixel}
-			geometry={props.geometry}
-			coordinates={coordinates}
-			svgAttributes={props.svgAttributes}
-		/>
-	);
-}
-
-export function GeoJsonFeature(props: GeoJsonProps): JSX.Element {
-	const [internalHover, setInternalHover] = useState(props.hover || false);
-	const hover = props.hover !== undefined ? props.hover : internalHover;
-	const callbackSvgAttributes = props.styleCallback?.(props.feature, hover);
+export const GeoJsonFeature = (
+	props: GeoJsonFeature & GeoJsonExtraProps & GeoJsonFeatureExtraProps,
+): JSX.Element => {
+	const [hover, setHover] = useState(false);
+	const callbackSvgAttributes = props.styleCallback?.(props, hover);
 	const svgAttributes = callbackSvgAttributes
 		? props.svgAttributes
 			? { ...props.svgAttributes, ...callbackSvgAttributes }
@@ -188,8 +239,7 @@ export function GeoJsonFeature(props: GeoJsonProps): JSX.Element {
 
 	const eventParameters = (event: React.MouseEvent<SVGElement>) => ({
 		event,
-		anchor: props.anchor,
-		payload: props.feature,
+		feature: props,
 	});
 
 	return (
@@ -203,28 +253,45 @@ export function GeoJsonFeature(props: GeoJsonProps): JSX.Element {
 				props.onContextMenu ? (event) => props.onContextMenu(eventParameters(event)) : null
 			}
 			onMouseOver={(event) => {
+				setHover(true);
 				props.onMouseOver?.(eventParameters(event));
-				setInternalHover(true);
 			}}
 			onMouseOut={(event) => {
+				setHover(false);
 				props.onMouseOut?.(eventParameters(event));
-				setInternalHover(false);
 			}}
 		>
-			<GeometryCollection {...props} {...props.feature} svgAttributes={svgAttributes} />
+			<RenderGeoJsonGeometry geometry={props.geometry} svgAttributes={svgAttributes} />
 		</g>
 	);
-}
+};
 
-export function GeoJson(props: GeoJsonProps): JSX.Element {
-	const { width, height } = props.mapState;
+export const GeoJson = (props: GeoJsonProps): JSX.Element => {
+	const mapApi = useMapApi();
+	const { width, height } = mapApi.mapState;
+
+	let geoJsonObject = null;
+	if (props.data.type === "FeatureCollection") {
+		geoJsonObject = props.data.features.map((feature, i) => {
+			return (
+				// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+				<GeoJsonFeature key={i} {...feature} {...props} />
+			);
+		});
+	} else if (props.data.type === "Feature") {
+		geoJsonObject = <GeoJsonFeature {...props.data} {...props} />;
+	} else {
+		geoJsonObject = (
+			<RenderGeoJsonGeometry geometry={props.data} svgAttributes={props.svgAttributes} />
+		);
+	}
 
 	return (
 		<div
 			style={{
 				position: "absolute",
-				left: "0",
-				top: "0",
+				left: 0,
+				top: 0,
 				pointerEvents: "none",
 				cursor: "pointer",
 				...(props.style || {}),
@@ -239,34 +306,8 @@ export function GeoJson(props: GeoJsonProps): JSX.Element {
 				fill="none"
 				xmlns="http://www.w3.org/2000/svg"
 			>
-				{props.data?.features.map((feature, i) => (
-					<GeoJsonFeature key={i} {...props} feature={feature} />
-				))}
-
-				{React.Children.map(props.children, (child) => {
-					if (!child) {
-						return null;
-					}
-
-					if (!React.isValidElement(child)) {
-						return child;
-					}
-
-					return React.cloneElement(child, props);
-				})}
+				{geoJsonObject}
 			</svg>
 		</div>
 	);
-}
-
-export function GeoJsonLoader(props: GeoJsonLoaderProps): JSX.Element {
-	const [data, setData] = useState(props.data ? props.data : null);
-
-	useEffect(() => {
-		fetch(props.link)
-			.then((response) => response.json())
-			.then((data) => setData(data));
-	}, [props.link]);
-
-	return data ? <GeoJson data={data} {...props} /> : null;
-}
+};
