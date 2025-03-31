@@ -4,7 +4,7 @@ This is a demo of Pigeon Maps.
 
 ## Installation
 
-Install the dependencies using [Bun](https://bun.sh/):
+Install the dependencies using [Bun](https://bun.sh/) (you can alternatively use npn/pnpm):
 
 ```bash
 bun i
