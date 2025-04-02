@@ -47,8 +47,8 @@ export function Overlay({
 }: OverlayProps & React.HTMLAttributes<HTMLDivElement>) {
 	const mapApi = useMapApi();
 	const c = mapApi.latLngToPixel(anchor);
-	const left = c[0] - offsetPx[0];
-	const top = c[1] - offsetPx[1];
+	const left = Math.round(c[0] - offsetPx[0]);
+	const top = Math.round(c[1] - offsetPx[1]);
 
 	return (
 		<div

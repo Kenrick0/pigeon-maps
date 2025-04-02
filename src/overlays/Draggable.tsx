@@ -185,8 +185,8 @@ export function Draggable(props: DraggableProps): JSX.Element {
 	}, [mouseEvents, touchEvents]);
 
 	const c = mapApi.latLngToPixel(props.anchor || mapApi.mapState.center);
-	const left = c[0] - (props.offset ? props.offset[0] : 0);
-	const top = c[1] - (props.offset ? props.offset[1] : 0);
+	const left = Math.round(c[0] - (props.offset ? props.offset[0] : 0));
+	const top = Math.round(c[1] - (props.offset ? props.offset[1] : 0));
 
 	const { className, style } = props;
 	const { deltaX, deltaY, startLeft, startTop, isDragging } = _state;

@@ -1024,8 +1024,8 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			transformOrigin: "top left",
 		};
 
-		const left = scaleWidth / 2 + (tileMinX - tileCenterX) * 256;
-		const top = scaleHeight / 2 + (tileMinY - tileCenterY) * 256;
+		const left = Math.round(scaleWidth / 2 + (tileMinX - tileCenterX) * 256);
+		const top = Math.round(scaleHeight / 2 + (tileMinY - tileCenterY) * 256);
 
 		const tilesStyle: React.CSSProperties = {
 			position: "absolute",
