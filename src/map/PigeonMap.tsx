@@ -945,7 +945,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			return dprs.map((dpr) => url(x, y, z, dpr) + (dpr === 1 ? "" : ` ${dpr}x`)).join(", ");
 		}
 
-		const { oldTiles, width, height } = this.state;
 		const { dprs, boxClassname } = this.props;
 		const mapUrl = this.props.provider || osm;
 
@@ -990,7 +989,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		} = newTileValues;
 
 		// Generate tiles for the old zoom levels
-		for (const old of oldTiles) {
+		for (const old of this.state.oldTiles) {
 			const zoomDiff = old.roundedZoom - roundedZoom;
 			if (Math.abs(zoomDiff) > 4 || zoomDiff === 0) {
 				continue;
@@ -1013,12 +1012,9 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		this._loadTracker = loadTracker;
 
 		const boxStyle: React.CSSProperties = {
-			width: scaleWidth,
-			height: scaleHeight,
+			width: "100%",
+			height: "100%",
 			position: "absolute",
-			top: `calc((100% - ${height}px) / 2)`,
-			left: `calc((100% - ${width}px) / 2)`,
-			overflow: "hidden",
 			willChange: "transform",
 			transform: `scale(${scale}, ${scale})`,
 			transformOrigin: "top left",
@@ -1049,14 +1045,10 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 	}
 
 	renderOverlays(): JSX.Element {
-		const { width, height } = this.state;
-
 		const childrenStyle: React.CSSProperties = {
 			position: "absolute",
-			width: width,
-			height: height,
-			top: `calc((100% - ${height}px) / 2)`,
-			left: `calc((100% - ${width}px) / 2)`,
+			width: "100%",
+			height: "100%",
 		};
 
 		return (
@@ -1132,16 +1124,13 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			twoFingerDragWarning,
 			warningZIndex,
 		} = this.props;
-		const { showWarning, warningType, width, height } = this.state;
+		const { showWarning, warningType } = this.state;
 
 		if ((metaWheelZoom && metaWheelZoomWarning) || (twoFingerDrag && twoFingerDragWarning)) {
 			const style: React.CSSProperties = {
 				position: "absolute",
-				top: 0,
-				left: 0,
-				width: width,
-				height: height,
-				overflow: "hidden",
+				width: "100%",
+				height: "100%",
 				pointerEvents: "none",
 				opacity: showWarning ? 100 : 0,
 				transition: "opacity 300ms",
@@ -1180,7 +1169,6 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			width: this.props.width ? width : "100%",
 			height: this.props.height ? height : "100%",
 			position: "relative",
-			display: "inline-block",
 			overflow: "hidden",
 			background: "#dddddd",
 			touchAction: enableTouchEvents ? (twoFingerDrag ? "pan-x pan-y" : "none") : "auto",
