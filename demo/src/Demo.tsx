@@ -226,6 +226,9 @@ export const Demo = () => {
 					onAnimationStop={() => {
 						setAnimating(false);
 					}}
+					onUserInteractionStart={() => {
+						console.log("User interaction started");
+					}}
 					animate={animate}
 					metaWheelZoom={metaWheelZoom}
 					twoFingerDrag={twoFingerDrag}
