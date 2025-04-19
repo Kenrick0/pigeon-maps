@@ -25,7 +25,7 @@ export const useMapApi = (): MapApi => {
 };
 
 const ANIMATION_TIME = 300;
-const SCROLL_PIXELS_FOR_ZOOM_LEVEL = 150;
+const SCROLL_PIXELS_FOR_ZOOM_LEVEL = 300;
 const MIN_VELOCITY_FOR_THROW = 250;
 const CLICK_TOLERANCE = 2;
 const DOUBLE_CLICK_DELAY = 300;
@@ -145,7 +145,8 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 	_mouseDown = false;
 	_moveEvents: MoveEvent[] = [];
 	_lastTapTime: number | null = null;
-	_lastWheelTime: number | null = null;
+	_lastWheelTime = 0;
+	_lastWheelZoom: number | null = null;
 	_touchStartPixel: Point[] | null = null;
 	_touchStartZoom: number | null = null;
 	_touchLastPixel: Point[] | null = null;
@@ -379,12 +380,15 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 		if (this.props.animate && animate) {
 			// If overall animation is enabled and animation requested for this specific move
+			this.stopAnimating(); // Cancel any current animation
 			this._isAnimating = true;
 			this._centerTarget = centerTarget;
 			this._zoomTarget = zoomTarget;
 			this._zoomAroundPixel = zoomAroundPixel;
-			this._animationStartTime = null; // flag to start animation on next frame
+			this._animationStartTime = performanceNow();
 			this._animationDuration = animationDuration;
+			this._centerStart = null; // flag to start animation on next frame
+			// If we set the center here it can be an old value and cause a jump, so set it in animate()
 			this._animFrame = requestAnimationFrame(this.animate);
 		} else {
 			// No animation, just set the center and zoom immediately
@@ -434,14 +438,14 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 	};
 
 	animate = (timestamp: number): void => {
-		if (this._animationStartTime === null) {
+		if (this._centerStart === null) {
 			// First frame of animation, set the start values
-			this._animationStartTime = timestamp;
 			this._centerStart = this.state.center;
 			this._zoomStart = this.state.zoom;
 			this.props.onAnimationStart?.();
-			this._animFrame = requestAnimationFrame(this.animate);
-		} else if (
+		}
+
+		if (
 			!this._animationDuration ||
 			timestamp >= this._animationDuration + this._animationStartTime
 		) {
@@ -837,24 +841,22 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 
 		event.preventDefault();
 
-		const addToZoom = -event.deltaY / SCROLL_PIXELS_FOR_ZOOM_LEVEL;
-
-		let ammountToZoom = 0;
-		if (!enableZoomSnap && this._zoomTarget) {
-			const stillToAdd = this._zoomTarget - this.state.zoom;
-			ammountToZoom = addToZoom + stillToAdd;
-		} else if (
-			animate ||
-			!this._lastWheelTime ||
-			performanceNow() - this._lastWheelTime > ANIMATION_TIME
-		) {
-			this._lastWheelTime = performanceNow();
-			ammountToZoom = addToZoom;
+		if (this._lastWheelZoom === null || !this._isAnimating) {
+			this._lastWheelZoom = this.state.zoom;
 		}
 
-		let newZoom = this.state.zoom + ammountToZoom;
+		// With animation disabled and snap enabled, we need to limit the scroll speed to avoid zooming too fast
+		const ZOOM_DELAY = 100; // ms, minimum time between zooms
+		if (!animate && enableZoomSnap && performanceNow() - this._lastWheelTime < ZOOM_DELAY) {
+			return;
+		}
+		this._lastWheelTime = performanceNow();
+
+		const amountToZoom = -event.deltaY / SCROLL_PIXELS_FOR_ZOOM_LEVEL;
+		let newZoom = this._lastWheelZoom + amountToZoom;
+		this._lastWheelZoom = newZoom;
 		if (enableZoomSnap) {
-			newZoom = ammountToZoom < 0 ? Math.floor(newZoom) : Math.ceil(newZoom);
+			newZoom = amountToZoom < 0 ? Math.floor(newZoom) : Math.ceil(newZoom);
 		}
 		newZoom = Math.max(this.props.minZoom, Math.min(this.props.maxZoom, newZoom));
 		if (newZoom !== (this._zoomTarget || this.state.zoom)) {
