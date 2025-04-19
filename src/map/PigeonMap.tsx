@@ -14,16 +14,6 @@ import type {
 } from "../types";
 import { osm } from "../providers";
 
-const MapContext = React.createContext(null);
-
-export const useMapApi = (): MapApi => {
-	const map_api = React.useContext(MapContext);
-	if (!map_api) {
-		throw new Error("MapContext not found, are you inside a <PigeonMap>?");
-	}
-	return map_api;
-};
-
 const ANIMATION_TIME = 300;
 const SCROLL_PIXELS_FOR_ZOOM_LEVEL = 300;
 const MIN_VELOCITY_FOR_THROW = 250;
@@ -75,6 +65,7 @@ const requestAnimationFrame = (callback: (timestamp: number) => void): number | 
 	callback(new Date().getTime());
 	return null;
 };
+
 const cancelAnimationFrame = (animFrame: number | null) =>
 	hasWindow && animFrame ? (window.cancelAnimationFrame || window.clearTimeout)(animFrame) : false;
 
@@ -559,6 +550,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			const pixel = getMousePixel(this._containerRef, touch);
 
 			if (this.coordsInside(pixel)) {
+				this.props.onUserInteractionStart?.();
 				this._touchStartPixel = [pixel];
 				this._touchLastPixel = [pixel];
 
@@ -725,6 +717,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			(!event.target || !parentHasClass(event.target as HTMLElement, "pigeon-drag-block")) &&
 			this.coordsInside(pixel)
 		) {
+			this.props.onUserInteractionStart?.();
 			this.stopAnimating();
 			event.preventDefault();
 
@@ -839,6 +832,7 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 			return;
 		}
 
+		this.props.onUserInteractionStart?.();
 		event.preventDefault();
 
 		if (this._lastWheelZoom === null || !this._isAnimating) {
@@ -1210,3 +1204,13 @@ export class PigeonMap extends Component<MapProps, MapReactState> {
 		);
 	}
 }
+
+const MapContext = React.createContext(null);
+
+export const useMapApi = (): MapApi => {
+	const map_api = React.useContext(MapContext);
+	if (!map_api) {
+		throw new Error("MapContext not found, are you inside a <PigeonMap>?");
+	}
+	return map_api;
+};

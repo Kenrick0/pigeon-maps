@@ -188,6 +188,11 @@ export interface MapProps {
 	onAnimationStop?: () => void;
 
 	/**
+	 * Callback triggered when a user interaction starts (e.g. dragging, zooming).
+	 */
+	onUserInteractionStart?: () => void;
+
+	/**
 	 * CSS class name for the map container.
 	 */
 	boxClassname?: string;
