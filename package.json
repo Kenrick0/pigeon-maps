@@ -20,7 +20,6 @@
 		"@types/react": "17.0.38",
 		"react": "^16.13.1",
 		"react-dom": "^16.13.1",
-		"rimraf": "^3.0.2",
 		"typescript": "^4.2.3"
 	},
 	"peerDependencies": {
@@ -28,7 +27,7 @@
 	},
 	"files": ["lib", "src", "LICENSE.md", "README.md"],
 	"scripts": {
-		"build": "rimraf lib && bun x tsc && bun build ./src/index.ts --outfile=lib/index.esm.js -e react",
+		"build": "node -e \"import('fs').then(fs => fs.rmSync('lib', {recursive: true, force: true}))\" && bun x tsc && bun build ./src/index.ts --outfile=lib/index.esm.js -e react",
 		"prepare": "bun run build"
 	}
 }
